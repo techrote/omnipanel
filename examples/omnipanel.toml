@@ -1,0 +1,5 @@
+# Startup settings only; not an execution policy or credential store.
+schema_version = 1
+# Relative to this file, not the shell working directory. Nothing is created.
+data_dir = "../.omnipanel"
+log_level = "INFO"
