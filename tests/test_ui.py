@@ -3,6 +3,7 @@
 from pathlib import Path
 
 import pytest
+from textual.content import Content
 from textual.widgets import Button, Static
 
 from omnipanel.config import AppConfig
@@ -15,7 +16,11 @@ async def test_mouse_close_is_available_and_creates_no_state(tmp_path: Path) -> 
     app = BootstrapApp(AppConfig(data_dir=target))
     async with app.run_test(size=(80, 24)) as pilot:
         assert app.query_one("#close-dashboard", Button).label.plain == "Close dashboard"
-        assert app.query_one("#settings", Static).markup is False
+        rendered = app.query_one("#settings", Static).visual
+        assert isinstance(rendered, Content)
+        expected = f"State path (not created): {target}\nConfigured log level: INFO"
+        assert rendered.plain == expected
+        assert not rendered.spans
         assert await pilot.click("#close-dashboard")
     assert not target.exists()
     assert not list(tmp_path.iterdir())
@@ -23,7 +28,9 @@ async def test_mouse_close_is_available_and_creates_no_state(tmp_path: Path) -> 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("size", [(80, 24), (40, 12), (120, 40)])
-async def test_keyboard_exit_at_different_terminal_sizes(tmp_path: Path, size: tuple[int, int]) -> None:
+async def test_keyboard_exit_at_different_terminal_sizes(
+    tmp_path: Path, size: tuple[int, int]
+) -> None:
     app = BootstrapApp(AppConfig(data_dir=tmp_path / "unused-state"))
     async with app.run_test(size=size) as pilot:
         await pilot.press("q")

@@ -56,7 +56,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
         return 0
     if not sys.stdin.isatty() or not sys.stdout.isatty():
-        print("omnipanel: tui requires an interactive terminal; use status for JSON", file=sys.stderr)
+        print(
+            "omnipanel: tui requires an interactive terminal; use status for JSON", file=sys.stderr
+        )
         return 2
     try:
         from omnipanel.ui.app import BootstrapApp

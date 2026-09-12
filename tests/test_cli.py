@@ -16,7 +16,9 @@ def test_default_help_does_not_load_config(capsys: pytest.CaptureFixture[str]) -
 
 
 @pytest.mark.parametrize("flag", ["--help", "--version"])
-def test_information_flags_do_not_load_config(flag: str, capsys: pytest.CaptureFixture[str]) -> None:
+def test_information_flags_do_not_load_config(
+    flag: str, capsys: pytest.CaptureFixture[str]
+) -> None:
     with pytest.raises(SystemExit) as result:
         main(["--config", "missing.toml", flag])
     assert result.value.code == 0
@@ -42,7 +44,9 @@ def test_status_json_is_lossless_and_does_not_create_state(
     assert set(config_file.parent.iterdir()) == before
 
 
-def test_cli_override(config_file: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+def test_cli_override(
+    config_file: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
     target = tmp_path / "override 東京"
     assert main(["--config", str(config_file), "--data-dir", str(target), "status"]) == 0
     assert json.loads(capsys.readouterr().out)["data_dir"] == str(target)

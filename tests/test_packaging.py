@@ -9,7 +9,8 @@ def test_installed_distribution_matches_version() -> None:
     assert package.version == __version__
     assert package.metadata["Requires-Python"] == ">=3.12"
     assert any(
-        item.name == "omnipanel" and item.value == "omnipanel.cli:main" for item in package.entry_points
+        item.name == "omnipanel" and item.value == "omnipanel.cli:main"
+        for item in package.entry_points
     )
 
 
