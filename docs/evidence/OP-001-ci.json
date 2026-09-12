@@ -1,0 +1,119 @@
+{
+  "task": "OP-001",
+  "repository": "techrote/omnipanel",
+  "pull_request": 56,
+  "base_sha": "a27d37a2bf11508da45caa8d217fb504aa61f119",
+  "tested_head_sha": "977c968731721a86411c60fca51c42ec2c833fc5",
+  "run_id": 34725770901,
+  "run_url": "https://github.com/techrote/omnipanel/actions/runs/34725770901",
+  "independent_review": "NOT RUN",
+  "jobs": [
+    {
+      "matrix": "linux312",
+      "job_id": 103639499226,
+      "conclusion": "success",
+      "artifact_id": 10308016888,
+      "artifact_sha256": "1995978b72e104e447d8edcd5a0f607fe2a8efcd4cac5ab099b0265e0b4de14b",
+      "junit_sha256": "8cd41f645ce3f8024c7e78b97bef294e1493848a969af3c914a71ca419957ed9",
+      "python": "Python 3.12.14 (main, Aug 13 2026, 02:47:42) [GCC 13.3.0]",
+      "tests": {"tests": 67, "failures": 0, "errors": 0, "skipped": 3, "passed": 64},
+      "test_elapsed_seconds": 1.071,
+      "skipped_cases": [
+        {"name": "test_windows_drive_relative_paths_rejected[C:state]", "reason": "native Windows path semantics"},
+        {"name": "test_windows_drive_relative_paths_rejected[\\\\state]", "reason": "native Windows path semantics"},
+        {"name": "test_native_windows_absolute_path", "reason": "native Windows path semantics"}
+      ],
+      "additional_dependencies": ["platformdirs==4.11.8"]
+    },
+    {
+      "matrix": "linux313",
+      "job_id": 103639499188,
+      "conclusion": "success",
+      "artifact_id": 10307897208,
+      "artifact_sha256": "6b1a2e98216cabe931969b37ba2942141b64d5e99c0ba65f57613035a38f1c03",
+      "junit_sha256": "f2c6bdf07acb727d2a663469ebced818a3103edb10372a67d6550f13cbb0adc1",
+      "python": "Python 3.13.15 (main, Aug  6 2026, 02:15:18) [GCC 13.3.0]",
+      "tests": {"tests": 67, "failures": 0, "errors": 0, "skipped": 3, "passed": 64},
+      "test_elapsed_seconds": 1.242,
+      "skipped_cases": [
+        {"name": "test_windows_drive_relative_paths_rejected[C:state]", "reason": "native Windows path semantics"},
+        {"name": "test_windows_drive_relative_paths_rejected[\\\\state]", "reason": "native Windows path semantics"},
+        {"name": "test_native_windows_absolute_path", "reason": "native Windows path semantics"}
+      ],
+      "additional_dependencies": ["platformdirs==4.11.8"]
+    },
+    {
+      "matrix": "linux314",
+      "job_id": 103639499146,
+      "conclusion": "success",
+      "artifact_id": 10307488108,
+      "artifact_sha256": "21f02f68e1f8cd0e107b65fb1cc03a6f18e75eb0d967a764cc9c6502ea86f95c",
+      "junit_sha256": "7fd0423babde46edb2621ebb74f981c11025eee7f8053ce976c032064a1d2a5a",
+      "python": "Python 3.14.7 (main, Aug  6 2026, 02:19:46) [GCC 13.3.0]",
+      "tests": {"tests": 67, "failures": 0, "errors": 0, "skipped": 3, "passed": 64},
+      "test_elapsed_seconds": 1.213,
+      "skipped_cases": [
+        {"name": "test_windows_drive_relative_paths_rejected[C:state]", "reason": "native Windows path semantics"},
+        {"name": "test_windows_drive_relative_paths_rejected[\\\\state]", "reason": "native Windows path semantics"},
+        {"name": "test_native_windows_absolute_path", "reason": "native Windows path semantics"}
+      ],
+      "additional_dependencies": ["platformdirs==4.11.8"]
+    },
+    {
+      "matrix": "windows312",
+      "job_id": 103639499172,
+      "conclusion": "success",
+      "artifact_id": 10307513213,
+      "artifact_sha256": "020a9779ea1ded0d06b6dd5ac0c326a93136d3cb8d961a2d8d24848e19b81881",
+      "junit_sha256": "0b90418cccf4a29fc77d44169b9bf2166a89d82fed53d2038712a59daa730666",
+      "python": "Python 3.12.10 (tags/v3.12.10:0cc8128, Apr  8 2025, 12:21:36) [MSC v.1943 64 bit (AMD64)]",
+      "tests": {"tests": 67, "failures": 0, "errors": 0, "skipped": 3, "passed": 64},
+      "test_elapsed_seconds": 1.381,
+      "skipped_cases": [
+        {"name": "test_windows_paths_are_not_silently_reinterpreted_on_posix[C:\\\\state]", "reason": "foreign Windows paths on POSIX"},
+        {"name": "test_windows_paths_are_not_silently_reinterpreted_on_posix[C:state]", "reason": "foreign Windows paths on POSIX"},
+        {"name": "test_windows_paths_are_not_silently_reinterpreted_on_posix[\\\\\\\\server\\\\share\\\\state]", "reason": "foreign Windows paths on POSIX"}
+      ],
+      "additional_dependencies": ["argcomplete==3.7.2", "click==8.5.0", "colorama==0.4.6", "filelock==3.32.5", "pipx==1.17.2", "platformdirs==4.11.7", "userpath==1.9.2"]
+    },
+    {
+      "matrix": "windows313",
+      "job_id": 103639499220,
+      "conclusion": "success",
+      "artifact_id": 10307547957,
+      "artifact_sha256": "d63ce7d90c58fdf8780ec24eb7cbdd3b2c3ddc9f8542dbeb8700a09a8a61aae6",
+      "junit_sha256": "a5e7329e4818f7e1e1cdd48d18771b6baa52b249b5d90d8fbbf006622254d1bc",
+      "python": "Python 3.13.15 (tags/v3.13.15:4061bc4, Aug  5 2026, 13:05:39) [MSC v.1944 64 bit (AMD64)]",
+      "tests": {"tests": 67, "failures": 0, "errors": 0, "skipped": 3, "passed": 64},
+      "test_elapsed_seconds": 1.18,
+      "skipped_cases": [
+        {"name": "test_windows_paths_are_not_silently_reinterpreted_on_posix[C:\\\\state]", "reason": "foreign Windows paths on POSIX"},
+        {"name": "test_windows_paths_are_not_silently_reinterpreted_on_posix[C:state]", "reason": "foreign Windows paths on POSIX"},
+        {"name": "test_windows_paths_are_not_silently_reinterpreted_on_posix[\\\\\\\\server\\\\share\\\\state]", "reason": "foreign Windows paths on POSIX"}
+      ],
+      "additional_dependencies": ["colorama==0.4.6", "platformdirs==4.11.8"]
+    },
+    {
+      "matrix": "windows314",
+      "job_id": 103639499097,
+      "conclusion": "success",
+      "artifact_id": 10306944536,
+      "artifact_sha256": "91cbceb490ee82fb377b01de00ca7e49f1ec904909bae7269ca8d2f4ceb133f8",
+      "junit_sha256": "9d664c84912eacbdb2d1a061b54d008a8bea40358625b056919a03f6fafd7f52",
+      "python": "Python 3.14.7 (tags/v3.14.7:823f032, Aug  5 2026, 10:51:32) [MSC v.1944 64 bit (AMD64)]",
+      "tests": {"tests": 67, "failures": 0, "errors": 0, "skipped": 3, "passed": 64},
+      "test_elapsed_seconds": 1.641,
+      "skipped_cases": [
+        {"name": "test_windows_paths_are_not_silently_reinterpreted_on_posix[C:\\\\state]", "reason": "foreign Windows paths on POSIX"},
+        {"name": "test_windows_paths_are_not_silently_reinterpreted_on_posix[C:state]", "reason": "foreign Windows paths on POSIX"},
+        {"name": "test_windows_paths_are_not_silently_reinterpreted_on_posix[\\\\\\\\server\\\\share\\\\state]", "reason": "foreign Windows paths on POSIX"}
+      ],
+      "additional_dependencies": ["colorama==0.4.6", "platformdirs==4.11.8"]
+    }
+  ],
+  "common_dependencies": [
+    "Pygments==2.21.0", "ast_serialize==0.11.1", "build==1.6.1", "iniconfig==2.3.0", "librt==0.15.0", "linkify-it-py==2.2.0", "markdown-it-py==4.2.0", "mdit-py-plugins==0.6.1", "mdurl==0.1.2", "mypy==2.3.1", "mypy_extensions==1.1.0", "omnipanel==0.1.0.dev1 (editable source at tested_head_sha)", "packaging==26.3", "pathspec==1.1.1", "pip==26.2.1", "pluggy==1.6.0", "pyproject_hooks==1.2.0", "pytest-asyncio==1.3.0", "pytest==9.0.2", "rich==15.0.0", "ruff==0.16.7", "textual==8.2.8", "typing_extensions==4.16.0"
+  ],
+  "passed_steps": ["editable install with development dependencies", "Ruff lint", "Ruff formatting", "strict source mypy", "unit/boundary/headless Textual tests", "isolated sdist and wheel build", "clean dependency-complete wheel install outside checkout", "dependency capture", "artifact upload"],
+  "package_snapshot_note": "Common plus per-job additional packages reflect pip freeze --all, including preinstalled runner tooling; these are not a lockfile. The editable source path is normalized to its tested commit."
+}

@@ -52,6 +52,22 @@ Canonical planning documents:
 
 ## Current state
 
-This repository is in programme-definition and implementation-decomposition stage. Nine metaissues and 46 child task issues are published. Two stable tasks remain unpublished because the GitHub connector safety check refused their issue creation: OP-018 (Codex master driver) and OP-047 (remote Execution Provider implementation). They remain visible in the workflow/bindings as blocked planning records and are **not** authorized published assignments.
+The repository now includes the OP-001 Python foundation on its implementation branch; independent review and merge are still required before OP-001 completion. Nine metaissues and 46 child task issues are published. Two stable tasks remain unpublished because the GitHub connector safety check refused their issue creation: OP-018 (Codex master driver) and OP-047 (remote Execution Provider implementation). They remain visible in the workflow/bindings as blocked planning records and are **not** authorized published assignments.
 
-No Omnipanel runtime, worker scheduler, VM control, model-ranking engine or production TUI is claimed yet. Active work in Ansible, Interloc or other repositories is not silently incorporated as completed Omnipanel functionality.
+The executable bootstrap provides typed startup settings, a read-only status command and a minimal non-executing Textual screen. No worker scheduler, VM control, model-ranking engine or production TUI is claimed yet. Active work in Ansible, Interloc or other repositories is not silently incorporated as completed Omnipanel functionality.
+
+## Run the bootstrap
+
+From this branch's repository root in Windows PowerShell (Python 3.12+):
+
+```powershell
+py -3.12 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -e ".[dev]"
+.\.venv\Scripts\python.exe -m omnipanel status
+.\.venv\Scripts\python.exe -m omnipanel tui
+```
+
+Paste the complete block; the final command opens the dashboard. It cannot start jobs.
+For Linux, configuration, clean installs and exact lint/type/test/build commands, see
+[Development and startup](docs/DEVELOPMENT.md). See [OP-001 evidence](docs/evidence/OP-001.md)
+for measured results, limitations and outstanding review gates.
