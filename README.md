@@ -43,6 +43,7 @@ Canonical planning documents:
 - [Pinned component contracts](docs/INTERFACES.md)
 - [Verification](docs/VERIFY.md)
 - [Roadmap](docs/ROADMAP.md)
+- [Blockers and external gates](docs/BLOCKERS.md)
 - [Decision register](docs/DECISIONS.md)
 - [Planning provenance](docs/PROVENANCE.md)
 - [Execution ledger](docs/EXECUTION_LEDGER.md)
