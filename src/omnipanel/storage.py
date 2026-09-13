@@ -10,7 +10,7 @@ import json
 import os
 import sqlite3
 import uuid
-from collections.abc import Iterator, Mapping, Sequence
+from collections.abc import Callable, Iterator, Mapping, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -97,9 +97,21 @@ class ReservationState(StrEnum):
 
 
 class ResourceReservation(StoreModel):
-    reservation_id: str = Field(min_length=1, max_length=96, pattern=r"^[A-Za-z0-9][A-Za-z0-9._:-]*$")
-    run_id: str = Field(min_length=1, max_length=96, pattern=r"^[A-Za-z0-9][A-Za-z0-9._:-]*$")
-    provider_id: str = Field(min_length=1, max_length=96, pattern=r"^[A-Za-z0-9][A-Za-z0-9._:-]*$")
+    reservation_id: str = Field(
+        min_length=1,
+        max_length=96,
+        pattern=r"^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+    )
+    run_id: str = Field(
+        min_length=1,
+        max_length=96,
+        pattern=r"^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+    )
+    provider_id: str = Field(
+        min_length=1,
+        max_length=96,
+        pattern=r"^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+    )
     request: ResourceRequest
     state: ReservationState = ReservationState.RESERVED
     updated_at: datetime
@@ -120,8 +132,16 @@ class EffectState(StrEnum):
 
 
 class EffectJournalEntry(StoreModel):
-    effect_id: str = Field(min_length=1, max_length=96, pattern=r"^[A-Za-z0-9][A-Za-z0-9._:-]*$")
-    kind: str = Field(min_length=1, max_length=96, pattern=r"^[A-Za-z0-9][A-Za-z0-9._:-]*$")
+    effect_id: str = Field(
+        min_length=1,
+        max_length=96,
+        pattern=r"^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+    )
+    kind: str = Field(
+        min_length=1,
+        max_length=96,
+        pattern=r"^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+    )
     state: EffectState
     detail: dict[str, Any]
     created_at: datetime
@@ -170,7 +190,12 @@ def _utc_now() -> datetime:
 
 def _canonical_json(value: object) -> str:
     try:
-        encoded = json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+        encoded = json.dumps(
+            value,
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=False,
+        )
     except (TypeError, ValueError) as exc:
         raise StateError("durable payload must be JSON serializable") from exc
     if len(encoded.encode("utf-8")) > MAX_JSON_BYTES:
@@ -301,7 +326,9 @@ class StateStore:
         try:
             self.paths.data_dir.mkdir(parents=True, exist_ok=True)
             if not self.paths.data_dir.is_dir():
-                raise StatePathError(f"durable data path is not a directory: {self.paths.data_dir}")
+                raise StatePathError(
+                    f"durable data path is not a directory: {self.paths.data_dir}"
+                )
         except OSError as exc:
             raise StatePathError(
                 f"durable data directory could not be created or opened: {self.paths.data_dir}"
@@ -325,7 +352,9 @@ class StateStore:
                 f"before recovering lock file: {self.paths.lock}"
             ) from exc
         except OSError as exc:
-            raise StateLockError(f"durable state lock could not be acquired: {self.paths.lock}") from exc
+            raise StateLockError(
+                f"durable state lock could not be acquired: {self.paths.lock}"
+            ) from exc
         try:
             os.write(descriptor, payload.encode("utf-8"))
         finally:
@@ -341,12 +370,16 @@ class StateStore:
             if payload.get("token") == token:
                 self.paths.lock.unlink(missing_ok=True)
         except (OSError, UnicodeError, json.JSONDecodeError):
-            # Never delete a lock we cannot prove is ours.
+            # Never delete a lock that cannot be proven to belong to this instance.
             return
 
     @staticmethod
-    def recover_stale_lock(config: AppConfig, *, database_name: str = DEFAULT_DATABASE_NAME) -> Path:
-        """Explicitly remove a stale lock after an operator has confirmed no owner is live."""
+    def recover_stale_lock(
+        config: AppConfig,
+        *,
+        database_name: str = DEFAULT_DATABASE_NAME,
+    ) -> Path:
+        """Remove a stale lock only after an operator has confirmed no owner is live."""
 
         filename = _safe_database_name(database_name)
         lock = (config.data_dir / filename).with_suffix(Path(filename).suffix + ".lock")
@@ -355,7 +388,9 @@ class StateStore:
         except FileNotFoundError:
             return lock
         except OSError as exc:
-            raise StateLockError(f"stale durable-state lock could not be removed: {lock}") from exc
+            raise StateLockError(
+                f"stale durable-state lock could not be removed: {lock}"
+            ) from exc
         return lock
 
     def _close_after_failed_open(self) -> None:
@@ -371,7 +406,8 @@ class StateStore:
             os.chmod(self.paths.database, 0o600)
         except OSError as exc:
             raise StatePathError(
-                f"durable state database permissions could not be restricted: {self.paths.database}"
+                "durable state database permissions could not be restricted: "
+                f"{self.paths.database}"
             ) from exc
 
     def _require_connection(self) -> sqlite3.Connection:
@@ -388,7 +424,7 @@ class StateStore:
 
     @contextmanager
     def transaction(self) -> Iterator[sqlite3.Connection]:
-        """Run an immediate transaction, rolling back completely on any exception."""
+        """Run an immediate transaction and roll it back completely on failure."""
 
         connection = self._require_connection()
         try:
@@ -411,7 +447,9 @@ class StateStore:
         while version < CURRENT_STATE_SCHEMA_VERSION:
             migration = _MIGRATIONS.get(version)
             if migration is None:
-                raise StateMigrationError(f"no migration path exists from schema generation {version}")
+                raise StateMigrationError(
+                    f"no migration path exists from schema generation {version}"
+                )
             try:
                 with self.transaction() as transaction:
                     migration(transaction)
@@ -432,20 +470,25 @@ class StateStore:
         if record_type not in _RECORD_MODELS:
             raise StateError(f"unsupported durable record_type: {record_type}")
         record_key = _record_key(record)
-        payload = _model_payload(record)
-        encoded = _canonical_json(payload)
-        now = _utc_now().isoformat()
+        encoded = _canonical_json(_model_payload(record))
         with self.transaction() as connection:
             connection.execute(
                 """
-                INSERT INTO records(record_type, record_key, schema_version, payload_json, updated_at)
-                VALUES (?, ?, ?, ?, ?)
+                INSERT INTO records(
+                    record_type, record_key, schema_version, payload_json, updated_at
+                ) VALUES (?, ?, ?, ?, ?)
                 ON CONFLICT(record_type, record_key) DO UPDATE SET
                     schema_version=excluded.schema_version,
                     payload_json=excluded.payload_json,
                     updated_at=excluded.updated_at
                 """,
-                (record_type, record_key, record.schema_version, encoded, now),
+                (
+                    record_type,
+                    record_key,
+                    record.schema_version,
+                    encoded,
+                    _utc_now().isoformat(),
+                ),
             )
         return record_key
 
@@ -458,22 +501,25 @@ class StateStore:
             (record_type, record_key),
         ).fetchone()
         if row is None:
-            raise RecordNotFoundError(f"durable record not found: {record_type}/{record_key}")
+            raise RecordNotFoundError(
+                f"durable record not found: {record_type}/{record_key}"
+            )
         try:
-            payload = json.loads(str(row["payload_json"]))
-            return model.model_validate(payload)
-        except (json.JSONDecodeError, ValidationError) as exc:
+            return model.model_validate_json(str(row["payload_json"]))
+        except ValidationError as exc:
             raise StateCorruptionError(
                 f"durable record failed validation: {record_type}/{record_key}"
             ) from exc
 
     def get_typed_record(self, model: type[TRecord], record_key: str) -> TRecord:
-        record_type_field = model.model_fields.get("record_type")
-        if record_type_field is None or record_type_field.default is None:
+        field = model.model_fields.get("record_type")
+        if field is None or not isinstance(field.default, str):
             raise StateError(f"record model lacks a default record_type: {model.__name__}")
-        record = self.get_record(str(record_type_field.default), record_key)
+        record = self.get_record(field.default, record_key)
         if not isinstance(record, model):
-            raise StateCorruptionError(f"durable record type mismatch for {record_key}")
+            raise StateCorruptionError(
+                f"durable record type mismatch for {field.default}/{record_key}"
+            )
         return record
 
     def list_record_keys(self, record_type: str) -> tuple[str, ...]:
@@ -486,7 +532,7 @@ class StateStore:
         return tuple(str(row[0]) for row in rows)
 
     def save_policy(self, task_id: str, policy: TaskPolicy) -> None:
-        payload = _model_payload(policy)
+        encoded = _canonical_json(_model_payload(policy))
         with self.transaction() as connection:
             connection.execute(
                 """
@@ -496,7 +542,7 @@ class StateStore:
                     payload_json=excluded.payload_json,
                     updated_at=excluded.updated_at
                 """,
-                (task_id, _canonical_json(payload), _utc_now().isoformat()),
+                (task_id, encoded, _utc_now().isoformat()),
             )
 
     def load_policy(self, task_id: str) -> TaskPolicy:
@@ -507,9 +553,11 @@ class StateStore:
         if row is None:
             raise RecordNotFoundError(f"durable policy not found for task: {task_id}")
         try:
-            return TaskPolicy.model_validate_json(str(row[0]))
+            return TaskPolicy.model_validate_json(str(row["payload_json"]))
         except ValidationError as exc:
-            raise StateCorruptionError(f"durable task policy failed validation: {task_id}") from exc
+            raise StateCorruptionError(
+                f"durable task policy failed validation: {task_id}"
+            ) from exc
 
     def save_component_observation(
         self,
@@ -537,7 +585,11 @@ class StateStore:
                 ),
             )
 
-    def load_component_observation(self, component_id: str, observation_id: str) -> dict[str, Any]:
+    def load_component_observation(
+        self,
+        component_id: str,
+        observation_id: str,
+    ) -> dict[str, Any]:
         row = self._require_connection().execute(
             """
             SELECT payload_json FROM component_observations
@@ -550,15 +602,19 @@ class StateStore:
                 f"component observation not found: {component_id}/{observation_id}"
             )
         try:
-            value = json.loads(str(row[0]))
+            value = json.loads(str(row["payload_json"]))
         except json.JSONDecodeError as exc:
-            raise StateCorruptionError("component observation contains invalid JSON") from exc
+            raise StateCorruptionError(
+                "component observation contains invalid JSON"
+            ) from exc
         if not isinstance(value, dict):
-            raise StateCorruptionError("component observation must decode to an object")
+            raise StateCorruptionError(
+                "component observation must decode to an object"
+            )
         return cast(dict[str, Any], value)
 
     def save_reservation(self, reservation: ResourceReservation) -> None:
-        payload = _model_payload(reservation)
+        encoded = _canonical_json(_model_payload(reservation))
         with self.transaction() as connection:
             connection.execute(
                 """
@@ -577,7 +633,7 @@ class StateStore:
                     reservation.run_id,
                     reservation.provider_id,
                     reservation.state.value,
-                    _canonical_json(payload),
+                    encoded,
                     reservation.updated_at.isoformat(),
                 ),
             )
@@ -588,9 +644,11 @@ class StateStore:
             (reservation_id,),
         ).fetchone()
         if row is None:
-            raise RecordNotFoundError(f"resource reservation not found: {reservation_id}")
+            raise RecordNotFoundError(
+                f"resource reservation not found: {reservation_id}"
+            )
         try:
-            return ResourceReservation.model_validate_json(str(row[0]))
+            return ResourceReservation.model_validate_json(str(row["payload_json"]))
         except ValidationError as exc:
             raise StateCorruptionError(
                 f"resource reservation failed validation: {reservation_id}"
@@ -611,7 +669,7 @@ class StateStore:
             created_at=now,
             updated_at=now,
         )
-        payload = _model_payload(entry)
+        encoded = _canonical_json(_model_payload(entry))
         with self.transaction() as connection:
             connection.execute(
                 """
@@ -623,23 +681,36 @@ class StateStore:
                     entry.effect_id,
                     entry.kind,
                     entry.state.value,
-                    _canonical_json(payload),
+                    encoded,
                     entry.created_at.isoformat(),
                     entry.updated_at.isoformat(),
                 ),
             )
         return entry
 
-    def settle_effect(self, effect_id: str, state: EffectState) -> EffectJournalEntry:
-        if state not in {EffectState.COMMITTED, EffectState.ABORTED, EffectState.INDETERMINATE}:
-            raise StateError("effect settlement must be committed, aborted or indeterminate")
+    def settle_effect(
+        self,
+        effect_id: str,
+        state: EffectState,
+    ) -> EffectJournalEntry:
+        if state not in {
+            EffectState.COMMITTED,
+            EffectState.ABORTED,
+            EffectState.INDETERMINATE,
+        }:
+            raise StateError(
+                "effect settlement must be committed, aborted or indeterminate"
+            )
         current = self.load_effect(effect_id)
         if current.state is not EffectState.PREPARED and current.state is not state:
             raise StateError(
-                f"effect {effect_id} is already terminal as {current.state.value}; refusing rewrite"
+                f"effect {effect_id} is already terminal as {current.state.value}; "
+                "refusing rewrite"
             )
-        updated = current.model_copy(update={"state": state, "updated_at": _utc_now()})
-        payload = _model_payload(updated)
+        updated = current.model_copy(
+            update={"state": state, "updated_at": _utc_now()}
+        )
+        encoded = _canonical_json(_model_payload(updated))
         with self.transaction() as connection:
             connection.execute(
                 """
@@ -647,7 +718,12 @@ class StateStore:
                 SET state=?, payload_json=?, updated_at=?
                 WHERE effect_id=?
                 """,
-                (state.value, _canonical_json(payload), updated.updated_at.isoformat(), effect_id),
+                (
+                    state.value,
+                    encoded,
+                    updated.updated_at.isoformat(),
+                    effect_id,
+                ),
             )
         return updated
 
@@ -659,17 +735,23 @@ class StateStore:
         if row is None:
             raise RecordNotFoundError(f"effect journal entry not found: {effect_id}")
         try:
-            return EffectJournalEntry.model_validate_json(str(row[0]))
+            return EffectJournalEntry.model_validate_json(str(row["payload_json"]))
         except ValidationError as exc:
-            raise StateCorruptionError(f"effect journal entry failed validation: {effect_id}") from exc
+            raise StateCorruptionError(
+                f"effect journal entry failed validation: {effect_id}"
+            ) from exc
 
-    def list_effects(self, state: EffectState | None = None) -> tuple[EffectJournalEntry, ...]:
+    def list_effects(
+        self,
+        state: EffectState | None = None,
+    ) -> tuple[EffectJournalEntry, ...]:
+        connection = self._require_connection()
         if state is None:
-            rows = self._require_connection().execute(
+            rows = connection.execute(
                 "SELECT payload_json FROM effect_journal ORDER BY created_at, effect_id"
             )
         else:
-            rows = self._require_connection().execute(
+            rows = connection.execute(
                 """
                 SELECT payload_json FROM effect_journal
                 WHERE state=? ORDER BY created_at, effect_id
@@ -679,31 +761,42 @@ class StateStore:
         entries: list[EffectJournalEntry] = []
         for row in rows:
             try:
-                entries.append(EffectJournalEntry.model_validate_json(str(row[0])))
+                entries.append(
+                    EffectJournalEntry.model_validate_json(str(row["payload_json"]))
+                )
             except ValidationError as exc:
-                raise StateCorruptionError("effect journal contains an invalid entry") from exc
+                raise StateCorruptionError(
+                    "effect journal contains an invalid entry"
+                ) from exc
         return tuple(entries)
 
     def _mark_interrupted_effects_indeterminate(self) -> None:
-        connection = self._require_connection()
-        rows = connection.execute(
+        rows = self._require_connection().execute(
             "SELECT effect_id, payload_json FROM effect_journal WHERE state=?",
             (EffectState.PREPARED.value,),
         ).fetchall()
         if not rows:
             return
-        with self.transaction() as transaction:
+        with self.transaction() as connection:
             for row in rows:
                 try:
-                    entry = EffectJournalEntry.model_validate_json(str(row["payload_json"]))
+                    entry = EffectJournalEntry.model_validate_json(
+                        str(row["payload_json"])
+                    )
                 except ValidationError as exc:
-                    raise StateCorruptionError("prepared effect failed recovery validation") from exc
+                    raise StateCorruptionError(
+                        "prepared effect failed recovery validation"
+                    ) from exc
                 updated = entry.model_copy(
-                    update={"state": EffectState.INDETERMINATE, "updated_at": _utc_now()}
+                    update={
+                        "state": EffectState.INDETERMINATE,
+                        "updated_at": _utc_now(),
+                    }
                 )
-                transaction.execute(
+                connection.execute(
                     """
-                    UPDATE effect_journal SET state=?, payload_json=?, updated_at=?
+                    UPDATE effect_journal
+                    SET state=?, payload_json=?, updated_at=?
                     WHERE effect_id=?
                     """,
                     (
@@ -715,8 +808,7 @@ class StateStore:
                 )
 
     def _mark_interrupted_reservations_indeterminate(self) -> None:
-        connection = self._require_connection()
-        rows = connection.execute(
+        rows = self._require_connection().execute(
             """
             SELECT reservation_id, payload_json FROM resource_reservations
             WHERE state IN (?, ?)
@@ -725,10 +817,12 @@ class StateStore:
         ).fetchall()
         if not rows:
             return
-        with self.transaction() as transaction:
+        with self.transaction() as connection:
             for row in rows:
                 try:
-                    reservation = ResourceReservation.model_validate_json(str(row["payload_json"]))
+                    reservation = ResourceReservation.model_validate_json(
+                        str(row["payload_json"])
+                    )
                 except ValidationError as exc:
                     raise StateCorruptionError(
                         "resource reservation failed recovery validation"
@@ -739,7 +833,7 @@ class StateStore:
                         "updated_at": _utc_now(),
                     }
                 )
-                transaction.execute(
+                connection.execute(
                     """
                     UPDATE resource_reservations
                     SET state=?, payload_json=?, updated_at=?
@@ -755,19 +849,27 @@ class StateStore:
 
     def integrity_check(self) -> IntegrityReport:
         try:
-            rows = self._require_connection().execute("PRAGMA integrity_check").fetchall()
+            rows = self._require_connection().execute(
+                "PRAGMA integrity_check"
+            ).fetchall()
         except sqlite3.DatabaseError as exc:
-            raise StateCorruptionError("SQLite integrity check could not run") from exc
-        details = "; ".join(str(row[0]) for row in rows)
-        return IntegrityReport(ok=details == "ok", detail=details)
+            raise StateCorruptionError(
+                "SQLite integrity check could not run"
+            ) from exc
+        detail = "; ".join(str(row[0]) for row in rows)
+        return IntegrityReport(ok=detail == "ok", detail=detail)
 
     def backup_to(self, destination: Path) -> Path:
         if not destination.is_absolute():
-            raise StatePathError("backup destination must be an absolute native path")
+            raise StatePathError(
+                "backup destination must be an absolute native path"
+            )
         try:
             destination.parent.mkdir(parents=True, exist_ok=True)
             if destination.exists() and not destination.is_file():
-                raise StatePathError(f"backup destination is not a regular file: {destination}")
+                raise StatePathError(
+                    f"backup destination is not a regular file: {destination}"
+                )
             target = sqlite3.connect(destination, isolation_level=None)
             try:
                 self._require_connection().backup(target)
@@ -776,14 +878,20 @@ class StateStore:
             if os.name != "nt":
                 os.chmod(destination, 0o600)
         except sqlite3.DatabaseError as exc:
-            raise StateCorruptionError(f"durable state backup failed: {destination}") from exc
+            raise StateCorruptionError(
+                f"durable state backup failed: {destination}"
+            ) from exc
         except OSError as exc:
-            raise StatePathError(f"durable state backup path is unusable: {destination}") from exc
+            raise StatePathError(
+                f"durable state backup path is unusable: {destination}"
+            ) from exc
         return destination
 
 
 def _migration_0_to_1(connection: sqlite3.Connection) -> None:
-    connection.executescript(
+    """Create generation 1 without implicit commits inside the migration transaction."""
+
+    statements = (
         """
         CREATE TABLE records(
             record_type TEXT NOT NULL,
@@ -792,25 +900,30 @@ def _migration_0_to_1(connection: sqlite3.Connection) -> None:
             payload_json TEXT NOT NULL,
             updated_at TEXT NOT NULL,
             PRIMARY KEY(record_type, record_key)
-        );
-        CREATE INDEX records_type_updated_idx ON records(record_type, updated_at);
-
+        )
+        """,
+        "CREATE INDEX records_type_updated_idx ON records(record_type, updated_at)",
+        """
         CREATE TABLE policy_choices(
             task_id TEXT PRIMARY KEY,
             payload_json TEXT NOT NULL,
             updated_at TEXT NOT NULL
-        );
-
+        )
+        """,
+        """
         CREATE TABLE component_observations(
             component_id TEXT NOT NULL,
             observation_id TEXT NOT NULL,
             payload_json TEXT NOT NULL,
             observed_at TEXT NOT NULL,
             PRIMARY KEY(component_id, observation_id)
-        );
+        )
+        """,
+        """
         CREATE INDEX component_observations_time_idx
-            ON component_observations(component_id, observed_at);
-
+        ON component_observations(component_id, observed_at)
+        """,
+        """
         CREATE TABLE resource_reservations(
             reservation_id TEXT PRIMARY KEY,
             run_id TEXT NOT NULL,
@@ -818,10 +931,13 @@ def _migration_0_to_1(connection: sqlite3.Connection) -> None:
             state TEXT NOT NULL,
             payload_json TEXT NOT NULL,
             updated_at TEXT NOT NULL
-        );
+        )
+        """,
+        """
         CREATE INDEX resource_reservations_run_idx
-            ON resource_reservations(run_id, state);
-
+        ON resource_reservations(run_id, state)
+        """,
+        """
         CREATE TABLE effect_journal(
             effect_id TEXT PRIMARY KEY,
             kind TEXT NOT NULL,
@@ -829,13 +945,17 @@ def _migration_0_to_1(connection: sqlite3.Connection) -> None:
             payload_json TEXT NOT NULL,
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
-        );
-        CREATE INDEX effect_journal_state_idx ON effect_journal(state, updated_at);
-        """
+        )
+        """,
+        "CREATE INDEX effect_journal_state_idx ON effect_journal(state, updated_at)",
     )
+    for statement in statements:
+        connection.execute(statement)
 
 
-_MIGRATIONS: Final[dict[int, Any]] = {0: _migration_0_to_1}
+_MIGRATIONS: Final[dict[int, Callable[[sqlite3.Connection], None]]] = {
+    0: _migration_0_to_1,
+}
 
 
 __all__ = [
