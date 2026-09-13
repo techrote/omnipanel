@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import StrEnum
-from typing import Any, Literal
+from typing import Any, Literal, Never
 
 from pydantic import Field, ValidationError, field_validator, model_validator
 
@@ -241,7 +241,7 @@ class SyntheticAnsibleAdapter:
         return message
 
     @staticmethod
-    def _raise(code: AnsibleAdapterErrorCode, summary: str, message_type: str) -> None:
+    def _raise(code: AnsibleAdapterErrorCode, summary: str, message_type: str) -> Never:
         raise AnsibleAdapterError(
             AnsibleAdapterDiagnostic(
                 code=code,
