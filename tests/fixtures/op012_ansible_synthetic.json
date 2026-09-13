@@ -75,7 +75,7 @@
         "record_type": "evidence",
         "evidence_id": "evidence-op012-001",
         "kind": "test-report",
-        "producer": {"producer_type": "execution-provider", "producer_id": "ansible-synthetic"},
+        "producer": {"producer_type": "provider", "producer_id": "ansible-synthetic"},
         "location": "fixture://op012/result-001",
         "created_at": "2026-09-13T21:00:03+01:00",
         "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
