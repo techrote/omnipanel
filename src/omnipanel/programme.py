@@ -184,15 +184,20 @@ def effective_policy(snapshot: ApplicationSnapshot, task: TaskRecord) -> TaskPol
 
 
 def build_bulk_optional_policy_plan(snapshot: ApplicationSnapshot) -> BulkPolicyPlan:
-    """Apply defaults only where OP-002 says an explicit user decision is unnecessary."""
+    """Reset optional policies only when current and target states need no human choice."""
 
     updates: list[tuple[str, TaskPolicy]] = []
     mandatory: list[str] = []
     for task in snapshot.tasks:
-        if task.policy.requires_explicit_user_decision():
+        current = effective_policy(snapshot, task)
+        target = _validated_policy(task.policy, user_decision=None)
+        if (
+            current.requires_explicit_user_decision()
+            or target.requires_explicit_user_decision()
+        ):
             mandatory.append(task.task_id)
         else:
-            updates.append((task.task_id, _validated_policy(task.policy, user_decision=None)))
+            updates.append((task.task_id, target))
     return BulkPolicyPlan(updates=tuple(updates), mandatory_task_ids=tuple(mandatory))
 
 
