@@ -6,6 +6,7 @@ stable fixture boundary until a separately qualified live contract exists.
 
 from __future__ import annotations
 
+import re
 from datetime import datetime
 from enum import StrEnum
 from typing import Any, Literal, Never
@@ -27,6 +28,7 @@ SYNTHETIC_ANSIBLE_CONTRACT = ComponentContractRef(
     contract_id="omnipanel-execution",
     contract_version="synthetic-1",
 )
+_MESSAGE_TYPE_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]*$")
 
 
 class AnsibleAdapterErrorCode(StrEnum):
@@ -180,6 +182,19 @@ MESSAGE_MODELS: dict[str, type[SyntheticAnsibleMessage]] = {
 }
 
 
+def _diagnostic_message_type(value: object) -> str:
+    if not isinstance(value, str):
+        return "unknown"
+    candidate = value.strip()
+    if (
+        not candidate
+        or len(candidate) > 96
+        or _MESSAGE_TYPE_PATTERN.fullmatch(candidate) is None
+    ):
+        return "unknown"
+    return candidate
+
+
 class SyntheticAnsibleAdapter:
     """Strict decoder and stale-status guard for deterministic fixtures."""
 
@@ -190,8 +205,7 @@ class SyntheticAnsibleAdapter:
                 "payload must be an object",
                 "unknown",
             )
-        message_type = payload.get("message_type")
-        type_name = message_type if isinstance(message_type, str) else "unknown"
+        type_name = _diagnostic_message_type(payload.get("message_type"))
         contract = payload.get("contract")
         try:
             observed = ComponentContractRef.model_validate(contract)
