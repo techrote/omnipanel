@@ -24,11 +24,11 @@ No active Ansible/Pickle worktree, CyberSand run, Interloc repository, Ohmy repo
 | machine-readable task graph | complete | workflow.json: 9 metaissues, 48 stable task IDs |
 | stable-ID issue binding | complete with explicit gaps | issue-bindings.json |
 | GitHub issue deployment | complete for 55 published issues; 2 stable tasks blocked from publication | ROADMAP, BLOCKERS, live issue readback |
-| runtime implementation | not started | no Omnipanel runtime claim |
+| runtime implementation | started; OP-001 complete | PR #56, OP-001 evidence/review, merge `16d10538f597d0cb199224b71a68e3246f0024dd` |
 
 ## Published issue set
 
-GitHub issues #1–#55 exist and are open at the end of this planning run.
+GitHub issues #1–#55 were published during the planning run.
 
 - #1–#9 are OP-M001..OP-M009 metaissues.
 - 46 bounded child tasks are published.
@@ -50,12 +50,29 @@ OP-018 and OP-047 remained refused after a reasonable direct attempt and were le
 - Ohmy is empty at this baseline.
 - intrallm remains reference/task data, not executable authority.
 
-## Readback/reconciliation
+## Initial readback/reconciliation
 
 A post-publication all-issue REST readback returned the published issue collection through #55. `issue-bindings.json` records exact stable-ID mapping and publication gaps. ROADMAP mirrors the actual critical path and blocker state rather than assuming contiguous stable-ID/issue numbering.
 
-The next repository-native implementation frontier is OP-001 / issue #10. Once its evidence is merged, OP-002 / #11 becomes ready; later concurrency is governed by `workflow.json` and ROADMAP rather than issue order.
+The initial repository-native implementation frontier was OP-001 / issue #10. The workflow requires OP-001 evidence to be merged before OP-002 / #11 becomes ready.
 
-## Completion statement
+## Runtime progression — OP-001
 
-The **planning and issue-decomposition baseline is complete** for the requested Omnipanel programme, subject to the two explicit connector publication blocks. Runtime implementation, live component qualification, VM/provider integration and performance claims have not started and are not implied by this ledger.
+OP-001 / issue #10 is the first completed runtime task.
+
+- implementation PR: #56, branch `implement/op-001-python-foundation`;
+- implementation acceptance: six-job Windows/Linux × Python 3.12/3.13/3.14 Foundation CI PASS;
+- independent Stone review: **PASS — OP-001 satisfies Stone independent review** in `docs/evidence/OP-001-independent-review.md`;
+- reviewed/review-publication head: `67ccf1774d40c5d11729aa87e9554b697612a121`;
+- merged to `main`: `16d10538f597d0cb199224b71a68e3246f0024dd`;
+- post-merge Foundation CI: run `34726762953`, PASS;
+- manual Windows 11 / Windows Terminal bootstrap smoke qualification: PASS, retained on issue #10;
+- no OP-002 code was included in OP-001.
+
+The OP-001 prerequisite is therefore evidence-complete and merged. OP-002 / issue #11 is **ready** under `workflow.json`; this readiness transition does not itself start OP-002 or satisfy any OP-002 Steel review gate.
+
+Later concurrency remains governed by `workflow.json` and ROADMAP rather than issue order.
+
+## Current completion statement
+
+The **planning and issue-decomposition baseline is complete** for the requested Omnipanel programme, subject to the two explicit connector publication blocks. Runtime implementation has now begun and OP-001 is complete. OP-002 is the next ready task. Live component qualification, VM/provider integration and performance claims remain future work unless separately evidenced.
