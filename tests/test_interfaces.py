@@ -47,9 +47,7 @@ def test_exact_supported_version_is_qualified() -> None:
     decision = _registry().negotiate("ansible-adapter", _observation("ansible_v1"))
     assert decision.outcome is CompatibilityOutcome.QUALIFIED
     assert decision.diagnostic is None
-    assert decision.adapter_qualification_evidence_ids == (
-        "evidence-adapter-ansible-1.0",
-    )
+    assert decision.adapter_qualification_evidence_ids == ("evidence-adapter-ansible-1.0",)
 
 
 def test_multiple_explicit_versions_support_migration_window() -> None:
@@ -63,9 +61,7 @@ def test_multiple_explicit_versions_support_migration_window() -> None:
     )
     decision = _registry().negotiate("ansible-adapter", observed)
     assert decision.outcome is CompatibilityOutcome.QUALIFIED
-    assert decision.adapter_qualification_evidence_ids == (
-        "evidence-adapter-ansible-1.1",
-    )
+    assert decision.adapter_qualification_evidence_ids == ("evidence-adapter-ansible-1.1",)
 
 
 def test_unsupported_version_fails_closed_with_supported_versions() -> None:
@@ -109,9 +105,7 @@ def test_changed_contract_identity_fails_closed() -> None:
 
 
 def test_unqualified_observation_fails_closed() -> None:
-    observed = _observation("ansible_v1").model_copy(
-        update={"qualification_evidence_ids": ()}
-    )
+    observed = _observation("ansible_v1").model_copy(update={"qualification_evidence_ids": ()})
     decision = _registry().negotiate("ansible-adapter", observed)
     assert decision.outcome is CompatibilityOutcome.INCOMPATIBLE
     assert decision.diagnostic is not None
