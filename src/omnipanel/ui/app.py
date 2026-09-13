@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
+from typing import cast
+
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import HorizontalScroll, VerticalScroll
@@ -9,8 +12,18 @@ from textual.widgets import Button, Footer, Header, Static
 
 from omnipanel import __version__
 from omnipanel.config import AppConfig
+from omnipanel.domain.contracts import TaskPolicy
+from omnipanel.programme import (
+    PolicyField,
+    build_bulk_optional_policy_plan,
+    confirm_policy,
+    cycle_policy,
+    effective_policy,
+    render_programme,
+)
 from omnipanel.services import ApplicationServices, ApplicationSnapshot
 from omnipanel.storage import StateError
+from omnipanel.workflow import TaskEvidence, WorkflowEngine
 
 
 class OperatorApp(App[None]):
@@ -33,6 +46,8 @@ class OperatorApp(App[None]):
     #status-banner { height: auto; min-height: 1; padding: 0 1; }
     #navigation { height: 3; padding: 0 1; }
     #navigation Button { min-width: 12; margin-right: 1; }
+    #task-actions { height: 3; padding: 0 1; display: none; }
+    #task-actions Button { min-width: 12; margin-right: 1; }
     #operator-content { height: 1fr; padding: 1 2; }
     #panel-title { text-style: bold; margin-bottom: 1; }
     #panel-body { width: 100%; height: auto; }
@@ -47,14 +62,27 @@ class OperatorApp(App[None]):
         "system": "System",
     }
 
-    def __init__(self, config: AppConfig, services: ApplicationServices) -> None:
+    def __init__(
+        self,
+        config: AppConfig,
+        services: ApplicationServices,
+        *,
+        workflow: WorkflowEngine | None = None,
+        task_evidence: tuple[TaskEvidence, ...] = (),
+    ) -> None:
         super().__init__()
         self.config = config
         self.services = services
+        self.workflow = workflow
+        self.task_evidence = task_evidence
         self._panel = "overview"
         self._status = (
             "BLOCKER: execution disabled until a qualified provider and policy permit it."
         )
+        self._selected_task_id: str | None = None
+        self._draft_policy: TaskPolicy | None = None
+        self._draft_task_id: str | None = None
+        self._policy_notice: str | None = None
 
     def compose(self) -> ComposeResult:
         yield Header()
@@ -62,6 +90,17 @@ class OperatorApp(App[None]):
         with HorizontalScroll(id="navigation"):
             for panel, label in self._PANEL_LABELS.items():
                 yield Button(label, id=f"nav-{panel}")
+        with HorizontalScroll(id="task-actions"):
+            yield Button("Prev task", id="task-prev")
+            yield Button("Next task", id="task-next")
+            yield Button("Load bearing", id="policy-load-bearing")
+            yield Button("Strategy", id="policy-strategy")
+            yield Button("Race policy", id="policy-race-policy")
+            yield Button("Value", id="policy-expected-value")
+            yield Button("Time", id="policy-expected-wall-time")
+            yield Button("Cost", id="policy-marginal-cost")
+            yield Button("Apply policy", id="policy-apply")
+            yield Button("Bulk optional defaults", id="policy-bulk-defaults")
         with VerticalScroll(id="operator-content"):
             yield Static("Overview", id="panel-title", markup=False)
             yield Static("Loading durable state…", id="panel-body", markup=False)
@@ -76,6 +115,21 @@ class OperatorApp(App[None]):
             panel = button_id.removeprefix("nav-")
             if panel in self._PANEL_LABELS:
                 self._show_panel(panel)
+            return
+        if button_id == "task-prev":
+            self._move_task(-1)
+            return
+        if button_id == "task-next":
+            self._move_task(1)
+            return
+        if button_id.startswith("policy-"):
+            action = button_id.removeprefix("policy-")
+            if action == "apply":
+                self._apply_policy()
+            elif action == "bulk-defaults":
+                self._bulk_optional_defaults()
+            else:
+                self._cycle_policy(action)
 
     def action_overview(self) -> None:
         self._show_panel("overview")
@@ -101,18 +155,121 @@ class OperatorApp(App[None]):
         self._status = f"BLOCKER: {message}"
         self.query_one("#status-banner", Static).update(self._status)
 
+    def _snapshot(self) -> ApplicationSnapshot | None:
+        try:
+            return self.services.snapshot()
+        except StateError as exc:
+            self.show_blocker(str(exc))
+            self.query_one("#panel-body", Static).update("Durable state is unavailable.")
+            return None
+
     def _show_panel(self, panel: str) -> None:
         if panel not in self._PANEL_LABELS:
             return
         self._panel = panel
+        self.query_one("#task-actions", HorizontalScroll).display = panel == "tasks"
         self.query_one("#panel-title", Static).update(self._PANEL_LABELS[panel])
-        try:
-            snapshot = self.services.snapshot()
-        except StateError as exc:
-            self.show_blocker(str(exc))
-            self.query_one("#panel-body", Static).update("Durable state is unavailable.")
+        snapshot = self._snapshot()
+        if snapshot is None:
             return
+        if panel == "tasks":
+            self._ensure_selected_task(snapshot)
         self.query_one("#panel-body", Static).update(self._render_panel(panel, snapshot))
+
+    def _ensure_selected_task(self, snapshot: ApplicationSnapshot) -> None:
+        task_ids = tuple(task.task_id for task in snapshot.tasks)
+        if not task_ids:
+            self._selected_task_id = None
+            self._draft_policy = None
+            self._draft_task_id = None
+            return
+        if self._selected_task_id not in task_ids:
+            self._selected_task_id = task_ids[0]
+            self._draft_policy = None
+            self._draft_task_id = None
+
+    def _move_task(self, delta: int) -> None:
+        snapshot = self._snapshot()
+        if snapshot is None or not snapshot.tasks:
+            return
+        self._ensure_selected_task(snapshot)
+        task_ids = tuple(task.task_id for task in snapshot.tasks)
+        assert self._selected_task_id is not None
+        index = task_ids.index(self._selected_task_id)
+        self._selected_task_id = task_ids[(index + delta) % len(task_ids)]
+        self._draft_policy = None
+        self._draft_task_id = None
+        self._policy_notice = None
+        self._show_panel("tasks")
+
+    def _selected_policy(self, snapshot: ApplicationSnapshot) -> TaskPolicy | None:
+        self._ensure_selected_task(snapshot)
+        if self._selected_task_id is None:
+            return None
+        task = next(task for task in snapshot.tasks if task.task_id == self._selected_task_id)
+        if self._draft_task_id == task.task_id and self._draft_policy is not None:
+            return self._draft_policy
+        policy = effective_policy(snapshot, task)
+        self._draft_policy = policy
+        self._draft_task_id = task.task_id
+        return policy
+
+    def _cycle_policy(self, field: str) -> None:
+        snapshot = self._snapshot()
+        if snapshot is None:
+            return
+        policy = self._selected_policy(snapshot)
+        if policy is None:
+            return
+        allowed: tuple[PolicyField, ...] = (
+            "load-bearing",
+            "strategy",
+            "race-policy",
+            "expected-value",
+            "expected-wall-time",
+            "marginal-cost",
+        )
+        if field not in allowed:
+            return
+        updated = cycle_policy(policy, cast(PolicyField, field))
+        self._draft_policy = updated
+        self._policy_notice = "Draft changed; Apply policy persists it."
+        self._show_panel("tasks")
+
+    def _apply_policy(self) -> None:
+        snapshot = self._snapshot()
+        if snapshot is None:
+            return
+        policy = self._selected_policy(snapshot)
+        if policy is None or self._selected_task_id is None:
+            return
+        confirmed = confirm_policy(
+            self._selected_task_id,
+            policy,
+            confirmed_by="human:operator",
+            confirmed_at=datetime.now(timezone.utc),
+        )
+        self.services.save_policy(self._selected_task_id, confirmed)
+        self._draft_policy = confirmed
+        self._draft_task_id = self._selected_task_id
+        self._policy_notice = "Policy persisted; mandatory choice recorded explicitly where required."
+        self._show_panel("tasks")
+
+    def _bulk_optional_defaults(self) -> None:
+        snapshot = self._snapshot()
+        if snapshot is None:
+            return
+        plan = build_bulk_optional_policy_plan(snapshot)
+        for task_id, policy in plan.updates:
+            self.services.save_policy(task_id, policy)
+        blocked = ",".join(plan.mandatory_task_ids) or "none"
+        self._policy_notice = (
+            f"Bulk defaults saved for {len(plan.updates)} optional task(s); "
+            f"mandatory decisions skipped: {blocked}."
+        )
+        self._draft_policy = None
+        self._draft_task_id = None
+        self._show_panel("tasks")
 
     def _render_panel(self, panel: str, snapshot: ApplicationSnapshot) -> str:
         if panel == "overview":
@@ -126,9 +283,15 @@ class OperatorApp(App[None]):
                 f"State: {self.config.data_dir}"
             )
         if panel == "tasks":
-            if not snapshot.tasks:
-                return "No durable tasks."
-            return "\n".join(f"{task.task_id}  {task.display_name}" for task in snapshot.tasks)
+            draft = self._selected_policy(snapshot)
+            return render_programme(
+                snapshot,
+                workflow=self.workflow,
+                evidence=self.task_evidence,
+                selected_task_id=self._selected_task_id,
+                draft_policy=draft,
+                notice=self._policy_notice,
+            )
         if panel == "runs":
             if not snapshot.runs:
                 return "No durable runs."
