@@ -701,10 +701,14 @@ class StateStore:
         }:
             raise StateError("effect settlement must be committed, aborted or indeterminate")
         current = self.load_effect(effect_id)
-        if current.state is not EffectState.PREPARED and current.state is not state:
+        if current.state is state:
+            return current
+        if current.state not in {EffectState.PREPARED, EffectState.INDETERMINATE}:
             raise StateError(
                 f"effect {effect_id} is already terminal as {current.state.value}; refusing rewrite"
             )
+        if current.state is EffectState.INDETERMINATE and state is EffectState.INDETERMINATE:
+            return current
         updated = current.model_copy(update={"state": state, "updated_at": _utc_now()})
         encoded = _canonical_json(_model_payload(updated))
         with self.transaction() as connection:
