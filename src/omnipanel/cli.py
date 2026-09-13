@@ -1,4 +1,4 @@
-"""Read-only bootstrap entry points; no live integrations or worker execution."""
+"""Omnipanel command-line entry points."""
 
 from __future__ import annotations
 
@@ -15,15 +15,15 @@ from omnipanel.config import ConfigError, load_config
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="omnipanel",
-        description="Omnipanel bootstrap. No orchestration or execution is enabled.",
+        description="Omnipanel bootstrap and local operator interface. Execution remains policy-gated.",
         allow_abbrev=False,
     )
     parser.add_argument("--version", action="version", version=f"Omnipanel {__version__}")
     parser.add_argument("--config", type=Path, help="explicit UTF-8 TOML configuration file")
-    parser.add_argument("--data-dir", type=Path, help="state path override (not created)")
+    parser.add_argument("--data-dir", type=Path, help="state path override")
     commands = parser.add_subparsers(dest="command")
-    commands.add_parser("status", help="print inert startup status as JSON")
-    commands.add_parser("tui", help="open the minimal, non-executing dashboard")
+    commands.add_parser("status", help="print startup status as JSON without opening state")
+    commands.add_parser("tui", help="open the service-backed operator dashboard")
     return parser
 
 
@@ -61,7 +61,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
         return 2
     try:
-        from omnipanel.ui.app import BootstrapApp
+        from omnipanel.ui.app import OperatorApp
     except ModuleNotFoundError as exc:
         if exc.name != "textual":
             raise
@@ -70,5 +70,14 @@ def main(argv: Sequence[str] | None = None) -> int:
             file=sys.stderr,
         )
         return 3
-    BootstrapApp(config).run()
+
+    from omnipanel.services import ApplicationServices
+    from omnipanel.storage import StateError, StateStore
+
+    try:
+        with StateStore(config) as store:
+            OperatorApp(config, ApplicationServices(store)).run()
+    except StateError as exc:
+        print(f"omnipanel: durable state unavailable: {exc}", file=sys.stderr)
+        return 4
     return 0
