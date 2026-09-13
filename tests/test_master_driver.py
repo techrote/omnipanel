@@ -21,7 +21,6 @@ from omnipanel.master_driver import (
     MasterLifecycleError,
     MasterLifecycleErrorCode,
     MasterProposal,
-    MasterRecommendation,
     ProposedSubtask,
 )
 
@@ -39,7 +38,9 @@ def _task() -> TaskRecord:
     return TaskRecord.model_validate(_fixture()["task"])
 
 
-def _master(master_id: str = "master-local", driver_id: str = "fake-master") -> MasterIdentityRecord:
+def _master(
+    master_id: str = "master-local", driver_id: str = "fake-master"
+) -> MasterIdentityRecord:
     payload = dict(_fixture()["master"])
     payload["master_id"] = master_id
     payload["driver_id"] = driver_id
@@ -65,7 +66,11 @@ def _proposal(**updates: object) -> MasterProposal:
         },
         "decomposition": [
             {"step_id": "inspect", "display_name": "Inspect contract", "depends_on": []},
-            {"step_id": "implement", "display_name": "Implement change", "depends_on": ["inspect"]},
+            {
+                "step_id": "implement",
+                "display_name": "Implement change",
+                "depends_on": ["inspect"],
+            },
         ],
         "rationale": "Use one bounded candidate under the authoritative task policy",
     }
@@ -117,7 +122,10 @@ def test_fake_master_drives_complete_task_contract_lifecycle() -> None:
     assert result.contract.acceptance_gate_ids == tuple(
         gate.gate_id for gate in task.acceptance_gates
     )
-    assert result.intake.provenance.context_sha256 != "large conversation content is represented only by digest"
+    assert (
+        result.intake.provenance.context_sha256
+        != "large conversation content is represented only by digest"
+    )
     assert result.adjudication.selected_candidate_id == "candidate-a"
     assert result.adjudication_request.promotion_requires_user
 
@@ -139,11 +147,13 @@ def test_driver_replacement_preserves_normalized_domain_shape() -> None:
         task,
         context="same task context",
         candidate_ids=("candidate-a",),
+        evidence_ids=("evidence-junit-001",),
     )
     second = MasterLifecycle(_driver(identity=_master("master-b", "driver-b"))).run(
         task,
         context="same task context",
         candidate_ids=("candidate-a",),
+        evidence_ids=("evidence-junit-001",),
     )
     assert type(first.contract) is type(second.contract)
     assert first.contract.task_id == second.contract.task_id == task.task_id
@@ -156,7 +166,10 @@ def test_master_cannot_target_another_task() -> None:
     proposal = _proposal(task_id="OP-017")
     with pytest.raises(MasterLifecycleError) as caught:
         MasterLifecycle(_driver(proposal)).run(
-            _task(), context="ctx", candidate_ids=("candidate-a",)
+            _task(),
+            context="ctx",
+            candidate_ids=("candidate-a",),
+            evidence_ids=("evidence-junit-001",),
         )
     assert caught.value.diagnostic.code is MasterLifecycleErrorCode.TASK_MISMATCH
 
@@ -165,7 +178,10 @@ def test_master_cannot_override_authoritative_strategy() -> None:
     proposal = _proposal(strategy="race", candidate_count=2)
     with pytest.raises(MasterLifecycleError) as caught:
         MasterLifecycle(_driver(proposal)).run(
-            _task(), context="ctx", candidate_ids=("candidate-a", "candidate-b")
+            _task(),
+            context="ctx",
+            candidate_ids=("candidate-a", "candidate-b"),
+            evidence_ids=("evidence-junit-001",),
         )
     assert caught.value.diagnostic.code is MasterLifecycleErrorCode.STRATEGY_CONFLICT
 
@@ -176,7 +192,12 @@ def test_explicit_user_policy_remains_authoritative() -> None:
         update={"policy": task.policy.model_copy(update={"user_decision": None})}
     )
     with pytest.raises(MasterLifecycleError) as caught:
-        MasterLifecycle(_driver()).run(task, context="ctx", candidate_ids=("candidate-a",))
+        MasterLifecycle(_driver()).run(
+            task,
+            context="ctx",
+            candidate_ids=("candidate-a",),
+            evidence_ids=("evidence-junit-001",),
+        )
     assert caught.value.diagnostic.code is MasterLifecycleErrorCode.USER_POLICY_REQUIRED
 
 
@@ -184,7 +205,9 @@ def test_explicit_user_policy_remains_authoritative() -> None:
     ("provider_request", "expected"),
     [
         (
-            ProviderRequest(required_capability_handles=("network.admin",), writable_paths=("tests",)),
+            ProviderRequest(
+                required_capability_handles=("network.admin",), writable_paths=("tests",)
+            ),
             MasterLifecycleErrorCode.CAPABILITY_BROADENED,
         ),
         (
@@ -214,7 +237,10 @@ def test_master_cannot_broaden_task_provider_boundary(
     proposal = _proposal(provider_request=provider_request.model_dump(mode="json"))
     with pytest.raises(MasterLifecycleError) as caught:
         MasterLifecycle(_driver(proposal)).run(
-            _task(), context="ctx", candidate_ids=("candidate-a",)
+            _task(),
+            context="ctx",
+            candidate_ids=("candidate-a",),
+            evidence_ids=("evidence-junit-001",),
         )
     assert caught.value.diagnostic.code is expected
 
@@ -230,25 +256,76 @@ def test_master_cannot_relax_specific_provider_class() -> None:
     )
     proposal = _proposal()
     with pytest.raises(MasterLifecycleError) as caught:
-        MasterLifecycle(_driver(proposal)).run(task, context="ctx", candidate_ids=("candidate-a",))
+        MasterLifecycle(_driver(proposal)).run(
+            task,
+            context="ctx",
+            candidate_ids=("candidate-a",),
+            evidence_ids=("evidence-junit-001",),
+        )
     assert caught.value.diagnostic.code is MasterLifecycleErrorCode.PROVIDER_CLASS_BROADENED
 
 
 def test_unavailable_master_fails_before_proposal_use() -> None:
     with pytest.raises(MasterLifecycleError) as caught:
         MasterLifecycle(_driver(availability=MasterAvailability.UNAVAILABLE)).run(
-            _task(), context="ctx", candidate_ids=("candidate-a",)
+            _task(),
+            context="ctx",
+            candidate_ids=("candidate-a",),
+            evidence_ids=("evidence-junit-001",),
         )
     assert caught.value.diagnostic.code is MasterLifecycleErrorCode.MASTER_UNAVAILABLE
+
+
+def test_actual_candidate_count_must_match_normalized_proposal() -> None:
+    with pytest.raises(MasterLifecycleError) as caught:
+        MasterLifecycle(_driver()).run(
+            _task(),
+            context="ctx",
+            candidate_ids=("candidate-a", "candidate-b"),
+            evidence_ids=("evidence-junit-001",),
+        )
+    assert caught.value.diagnostic.code is MasterLifecycleErrorCode.CANDIDATE_COUNT_INVALID
+
+
+def test_candidate_set_must_be_unique_before_adjudication() -> None:
+    proposal = _proposal(strategy="single", candidate_count=2)
+    task = _task()
+    task = task.model_copy(
+        update={"policy": task.policy.model_copy(update={"strategy": RunStrategy.RACE})}
+    )
+    proposal = proposal.model_copy(update={"strategy": RunStrategy.RACE})
+    with pytest.raises(MasterLifecycleError) as caught:
+        MasterLifecycle(_driver(proposal)).run(
+            task,
+            context="ctx",
+            candidate_ids=("candidate-a", "candidate-a"),
+            evidence_ids=("evidence-junit-001",),
+        )
+    assert caught.value.diagnostic.code is MasterLifecycleErrorCode.CANDIDATE_SET_INVALID
 
 
 def test_adjudication_cannot_select_unknown_candidate() -> None:
     adjudication = _adjudication(selected_candidate_id="candidate-z")
     with pytest.raises(MasterLifecycleError) as caught:
         MasterLifecycle(_driver(adjudication=adjudication)).run(
-            _task(), context="ctx", candidate_ids=("candidate-a",)
+            _task(),
+            context="ctx",
+            candidate_ids=("candidate-a",),
+            evidence_ids=("evidence-junit-001",),
         )
     assert caught.value.diagnostic.code is MasterLifecycleErrorCode.UNKNOWN_CANDIDATE
+
+
+def test_adjudication_cannot_invent_evidence() -> None:
+    adjudication = _adjudication(evidence_ids=["evidence-not-supplied"])
+    with pytest.raises(MasterLifecycleError) as caught:
+        MasterLifecycle(_driver(adjudication=adjudication)).run(
+            _task(),
+            context="ctx",
+            candidate_ids=("candidate-a",),
+            evidence_ids=("evidence-junit-001",),
+        )
+    assert caught.value.diagnostic.code is MasterLifecycleErrorCode.EVIDENCE_MISMATCH
 
 
 def test_decomposition_rejects_cycles_and_unknown_dependencies() -> None:
