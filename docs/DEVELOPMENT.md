@@ -114,7 +114,12 @@ weakening assertions, skipping Textual or silently broadening supported contract
 
 ## Completion boundary
 
-The OP-001 implementation and its checks are not independent implementation review.
-Stone review and merge remain explicit gates. The existing execution ledger makes
-OP-002 ready only after OP-001 evidence is merged. Never modify `workflow.json`,
-issue bindings or the load-bearing policy merely to bypass that gate.
+OP-001 has completed its required automated acceptance, independent Stone review,
+merge and post-merge reconciliation. The merged `main` state passed Foundation CI,
+and the manual Windows 11 / Windows Terminal bootstrap smoke qualification passed.
+The OP-001 evidence set remains in `docs/evidence/` and issue #10.
+
+OP-002 / issue #11 is now ready because its OP-001 prerequisite evidence is merged.
+Read and execute OP-002 as its own Steel task; readiness does not mean implementation
+has already started or that its independent-review requirements are satisfied. Never
+modify `workflow.json`, issue bindings or load-bearing policy merely to bypass a gate.
