@@ -137,17 +137,11 @@ async def test_project_and_metaissue_navigation_moves_task_scope(tmp_path: Path)
         app = OperatorApp(config, services)
         async with app.run_test(size=(260, 32)) as pilot:
             assert await pilot.click("#nav-tasks")
-            assert "project=proj-a metaissue=OP-M101 task=OP-101" in _plain(
-                app, "#panel-body"
-            )
+            assert "project=proj-a metaissue=OP-M101 task=OP-101" in _plain(app, "#panel-body")
             assert await pilot.click("#metaissue-next")
-            assert "project=proj-a metaissue=OP-M102 task=OP-102" in _plain(
-                app, "#panel-body"
-            )
+            assert "project=proj-a metaissue=OP-M102 task=OP-102" in _plain(app, "#panel-body")
             assert await pilot.click("#project-next")
-            assert "project=proj-b metaissue=OP-M103 task=OP-103" in _plain(
-                app, "#panel-body"
-            )
+            assert "project=proj-b metaissue=OP-M103 task=OP-103" in _plain(app, "#panel-body")
 
 
 @pytest.mark.asyncio
