@@ -220,9 +220,7 @@ class ApplicationServices:
 
     def _resource_summary(self) -> ResourceSummary:
         reservations = self._reservations()
-        live = tuple(
-            item for item in reservations if item.state is not ReservationState.RELEASED
-        )
+        live = tuple(item for item in reservations if item.state is not ReservationState.RELEASED)
         return ResourceSummary(
             total=len(reservations),
             reserved=sum(item.state is ReservationState.RESERVED for item in reservations),
