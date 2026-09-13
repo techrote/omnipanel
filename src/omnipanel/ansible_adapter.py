@@ -186,11 +186,7 @@ def _diagnostic_message_type(value: object) -> str:
     if not isinstance(value, str):
         return "unknown"
     candidate = value.strip()
-    if (
-        not candidate
-        or len(candidate) > 96
-        or _MESSAGE_TYPE_PATTERN.fullmatch(candidate) is None
-    ):
+    if not candidate or len(candidate) > 96 or _MESSAGE_TYPE_PATTERN.fullmatch(candidate) is None:
         return "unknown"
     return candidate
 
