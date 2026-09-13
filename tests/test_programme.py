@@ -21,7 +21,7 @@ from omnipanel.programme import (
     cycle_policy,
     render_programme,
 )
-from omnipanel.services import ApplicationSnapshot, ResourceSummary
+from omnipanel.services import ApplicationSnapshot, PolicyView, ResourceSummary
 from omnipanel.workflow import TaskEvidence, WorkflowEngine
 
 ROOT = Path(__file__).parents[1]
@@ -38,7 +38,11 @@ def _task() -> TaskRecord:
     return TaskRecord.model_validate(_fixture()["task"])
 
 
-def _empty_snapshot(*, tasks: tuple[TaskRecord, ...] = ()) -> ApplicationSnapshot:
+def _empty_snapshot(
+    *,
+    tasks: tuple[TaskRecord, ...] = (),
+    policies: tuple[PolicyView, ...] = (),
+) -> ApplicationSnapshot:
     return ApplicationSnapshot(
         projects=(),
         metaissues=(),
@@ -49,7 +53,7 @@ def _empty_snapshot(*, tasks: tuple[TaskRecord, ...] = ()) -> ApplicationSnapsho
         evidence=(),
         model_identities=(),
         models=(),
-        policies=(),
+        policies=policies,
         resources=ResourceSummary(
             total=0,
             reserved=0,
@@ -125,6 +129,45 @@ def test_bulk_defaults_never_cross_mandatory_decision_boundary() -> None:
     plan = build_bulk_optional_policy_plan(_empty_snapshot(tasks=(mandatory, optional)))
     assert tuple(task_id for task_id, _ in plan.updates) == ("OP-003",)
     assert plan.mandatory_task_ids == ("OP-002",)
+
+
+def test_bulk_defaults_protect_mandatory_persisted_override() -> None:
+    optional_policy = TaskPolicy(
+        load_bearing=LoadBearing.STONE,
+        economics=EconomicDimensions(
+            expected_value=ExpectedValue.HIGH,
+            expected_wall_time=ExpectedWallTime.SHORT,
+            marginal_cost=MarginalCost.LOCAL,
+        ),
+        strategy=RunStrategy.SINGLE,
+        review=ReviewPolicy(independent_implementation_reviews=1),
+    )
+    task = _task().model_copy(
+        update={
+            "task_id": "OP-003",
+            "display_name": "Persisted mandatory override",
+            "policy": optional_policy,
+        }
+    )
+    mandatory_override = optional_policy.model_copy(
+        update={
+            "load_bearing": LoadBearing.STEEL,
+            "review": ReviewPolicy(
+                independent_implementation_reviews=1,
+                independent_verification_reviews=1,
+                consequential_promotion_requires_user=True,
+            ),
+        }
+    )
+    snapshot = _empty_snapshot(
+        tasks=(task,),
+        policies=(PolicyView(task_id=task.task_id, policy=mandatory_override),),
+    )
+
+    plan = build_bulk_optional_policy_plan(snapshot)
+
+    assert plan.updates == ()
+    assert plan.mandatory_task_ids == ("OP-003",)
 
 
 def test_programme_projection_distinguishes_closed_from_reconciled_evidence() -> None:
