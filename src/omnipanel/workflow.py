@@ -505,7 +505,7 @@ class WorkflowEngine:
 
         reasons: list[str] = []
         if task.deferred and not allow_deferred:
-            reasons.append("task is explicitly deferred")
+            reasons.append("explicitly deferred")
         if issue_number is None and not allow_unpublished:
             reasons.append("task has no published GitHub issue binding")
         if task.external_gate is not None and task.external_gate not in satisfied_external_gates:
