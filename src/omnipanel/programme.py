@@ -114,9 +114,7 @@ def cycle_policy(policy: TaskPolicy, field: PolicyField) -> TaskPolicy:
     if field == "strategy":
         target_strategy = _next(policy.strategy, _STRATEGY_ORDER)
         race_policy = (
-            policy.race_policy or RacePolicy.ASK
-            if target_strategy is RunStrategy.RACE
-            else None
+            policy.race_policy or RacePolicy.ASK if target_strategy is RunStrategy.RACE else None
         )
         return _validated_policy(
             policy,
@@ -209,9 +207,7 @@ def _policy_summary(policy: TaskPolicy) -> str:
     )
 
 
-def _workflow_lines(
-    workflow: WorkflowEngine, evidence: tuple[TaskEvidence, ...]
-) -> list[str]:
+def _workflow_lines(workflow: WorkflowEngine, evidence: tuple[TaskEvidence, ...]) -> list[str]:
     readiness = {item.task_id: item for item in workflow.readiness_snapshot(evidence)}
     evidence_by_id = {item.task_id: item for item in evidence}
     specs = {item.id: item for item in workflow.manifest.tasks}
@@ -237,9 +233,7 @@ def _workflow_lines(
                 evidence_label = "github=open-or-unknown evidence=unreconciled"
             deps = ",".join(spec.deps) if spec.deps else "-"
             issue = f"#{ready.issue_number}" if ready.issue_number is not None else "unpublished"
-            lines.append(
-                f"  {task_id} {issue} [{readiness_label}] deps={deps} | {evidence_label}"
-            )
+            lines.append(f"  {task_id} {issue} [{readiness_label}] deps={deps} | {evidence_label}")
             for reason in ready.reasons:
                 lines.append(f"    blocker: {reason}")
     return lines
@@ -262,9 +256,13 @@ def _durable_dag_lines(snapshot: ApplicationSnapshot) -> list[str]:
         deps = ",".join(task.prerequisite_task_ids) if task.prerequisite_task_ids else "-"
         lines.append(f"  {task.task_id} {task.display_name} deps={deps}")
     if snapshot.dag_edges:
-        lines.append("Edges: " + ", ".join(
-            f"{edge.predecessor_task_id}->{edge.successor_task_id}" for edge in snapshot.dag_edges
-        ))
+        lines.append(
+            "Edges: "
+            + ", ".join(
+                f"{edge.predecessor_task_id}->{edge.successor_task_id}"
+                for edge in snapshot.dag_edges
+            )
+        )
     return lines
 
 
@@ -279,7 +277,11 @@ def render_programme(
 ) -> str:
     """Render a scroll-friendly stable-ID programme/DAG and policy-edit projection."""
 
-    lines = _workflow_lines(workflow, evidence) if workflow is not None else _durable_dag_lines(snapshot)
+    lines = (
+        _workflow_lines(workflow, evidence)
+        if workflow is not None
+        else _durable_dag_lines(snapshot)
+    )
     if not snapshot.tasks:
         lines.append("\nNo durable task policy records.")
         return "\n".join(lines)
@@ -287,7 +289,11 @@ def render_programme(
     selected = next(
         (task for task in snapshot.tasks if task.task_id == selected_task_id), snapshot.tasks[0]
     )
-    policy = draft_policy if selected.task_id == selected_task_id and draft_policy is not None else effective_policy(snapshot, selected)
+    policy = (
+        draft_policy
+        if selected.task_id == selected_task_id and draft_policy is not None
+        else effective_policy(snapshot, selected)
+    )
     lines.extend(
         [
             "\nPolicy editor",
