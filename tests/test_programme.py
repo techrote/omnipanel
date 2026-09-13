@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from omnipanel.domain.contracts import (
@@ -78,7 +78,7 @@ def test_policy_edit_invalidates_stale_decision_and_confirms_mandatory_choice() 
         "OP-002",
         draft,
         confirmed_by="human:operator",
-        confirmed_at=datetime(2026, 9, 13, 22, 0, tzinfo=timezone.utc),
+        confirmed_at=datetime(2026, 9, 13, 22, 0, tzinfo=UTC),
     )
     assert confirmed.user_decision is not None
     assert confirmed.is_execution_policy_decided()
