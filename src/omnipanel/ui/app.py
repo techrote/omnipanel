@@ -90,6 +90,10 @@ class OperatorApp(App[None]):
             for panel, label in self._PANEL_LABELS.items():
                 yield Button(label, id=f"nav-{panel}")
         with HorizontalScroll(id="task-actions"):
+            yield Button("Prev project", id="project-prev")
+            yield Button("Next project", id="project-next")
+            yield Button("Prev metaissue", id="metaissue-prev")
+            yield Button("Next metaissue", id="metaissue-next")
             yield Button("Prev task", id="task-prev")
             yield Button("Next task", id="task-next")
             yield Button("Load bearing", id="policy-load-bearing")
@@ -114,6 +118,18 @@ class OperatorApp(App[None]):
             panel = button_id.removeprefix("nav-")
             if panel in self._PANEL_LABELS:
                 self._show_panel(panel)
+            return
+        if button_id == "project-prev":
+            self._move_project(-1)
+            return
+        if button_id == "project-next":
+            self._move_project(1)
+            return
+        if button_id == "metaissue-prev":
+            self._move_metaissue(-1)
+            return
+        if button_id == "metaissue-next":
+            self._move_metaissue(1)
             return
         if button_id == "task-prev":
             self._move_task(-1)
@@ -187,6 +203,53 @@ class OperatorApp(App[None]):
             self._draft_policy = None
             self._draft_task_id = None
 
+    def _select_task(self, task_id: str, *, notice: str | None = None) -> None:
+        self._selected_task_id = task_id
+        self._draft_policy = None
+        self._draft_task_id = None
+        self._policy_notice = notice
+        self._show_panel("tasks")
+
+    def _move_project(self, delta: int) -> None:
+        snapshot = self._snapshot()
+        if snapshot is None or not snapshot.tasks:
+            return
+        self._ensure_selected_task(snapshot)
+        assert self._selected_task_id is not None
+        selected = next(task for task in snapshot.tasks if task.task_id == self._selected_task_id)
+        project_ids = tuple(dict.fromkeys(task.project_id for task in snapshot.tasks))
+        index = project_ids.index(selected.project_id)
+        target_project = project_ids[(index + delta) % len(project_ids)]
+        target_task = next(task for task in snapshot.tasks if task.project_id == target_project)
+        self._select_task(target_task.task_id, notice=f"Project scope: {target_project}")
+
+    def _move_metaissue(self, delta: int) -> None:
+        snapshot = self._snapshot()
+        if snapshot is None or not snapshot.tasks:
+            return
+        self._ensure_selected_task(snapshot)
+        assert self._selected_task_id is not None
+        selected = next(task for task in snapshot.tasks if task.task_id == self._selected_task_id)
+        metaissue_ids = tuple(
+            dict.fromkeys(
+                task.parent_metaissue_id
+                for task in snapshot.tasks
+                if task.parent_metaissue_id is not None
+            )
+        )
+        if not metaissue_ids:
+            return
+        current = selected.parent_metaissue_id
+        if current is None or current not in metaissue_ids:
+            target_metaissue = metaissue_ids[0 if delta > 0 else -1]
+        else:
+            index = metaissue_ids.index(current)
+            target_metaissue = metaissue_ids[(index + delta) % len(metaissue_ids)]
+        target_task = next(
+            task for task in snapshot.tasks if task.parent_metaissue_id == target_metaissue
+        )
+        self._select_task(target_task.task_id, notice=f"Metaissue scope: {target_metaissue}")
+
     def _move_task(self, delta: int) -> None:
         snapshot = self._snapshot()
         if snapshot is None or not snapshot.tasks:
@@ -195,11 +258,7 @@ class OperatorApp(App[None]):
         task_ids = tuple(task.task_id for task in snapshot.tasks)
         assert self._selected_task_id is not None
         index = task_ids.index(self._selected_task_id)
-        self._selected_task_id = task_ids[(index + delta) % len(task_ids)]
-        self._draft_policy = None
-        self._draft_task_id = None
-        self._policy_notice = None
-        self._show_panel("tasks")
+        self._select_task(task_ids[(index + delta) % len(task_ids)])
 
     def _selected_policy(self, snapshot: ApplicationSnapshot) -> TaskPolicy | None:
         self._ensure_selected_task(snapshot)
@@ -285,13 +344,24 @@ class OperatorApp(App[None]):
             )
         if panel == "tasks":
             draft = self._selected_policy(snapshot)
-            return render_programme(
+            body = render_programme(
                 snapshot,
                 workflow=self.workflow,
                 evidence=self.task_evidence,
                 selected_task_id=self._selected_task_id,
                 draft_policy=draft,
                 notice=self._policy_notice,
+            )
+            selected = next(
+                (task for task in snapshot.tasks if task.task_id == self._selected_task_id),
+                None,
+            )
+            if selected is None:
+                return body
+            return (
+                f"Scope: project={selected.project_id} "
+                f"metaissue={selected.parent_metaissue_id or '-'} task={selected.task_id}\n"
+                f"{body}"
             )
         if panel == "runs":
             if not snapshot.runs:
