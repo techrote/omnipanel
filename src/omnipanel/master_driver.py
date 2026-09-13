@@ -173,6 +173,7 @@ class MasterDriver(Protocol):
 
 class MasterLifecycleErrorCode(StrEnum):
     MASTER_UNAVAILABLE = "master-unavailable"
+    PROVENANCE_MISMATCH = "provenance-mismatch"
     TASK_MISMATCH = "task-mismatch"
     USER_POLICY_REQUIRED = "user-policy-required"
     STRATEGY_CONFLICT = "strategy-conflict"
@@ -261,6 +262,12 @@ class MasterLifecycle:
         proposal: MasterProposal,
         provenance: MasterProvenance,
     ) -> NormalizedTaskContract:
+        identity = self.driver.identity
+        if provenance.driver_id != identity.driver_id:
+            self._fail(
+                MasterLifecycleErrorCode.PROVENANCE_MISMATCH,
+                "master provenance does not match the active driver identity",
+            )
         if proposal.task_id != task.task_id:
             self._fail(MasterLifecycleErrorCode.TASK_MISMATCH, "proposal targets another task")
         if not task.policy.is_execution_policy_decided():
@@ -285,13 +292,11 @@ class MasterLifecycle:
                 "race/diversity strategy requires at least two candidates",
             )
         self._validate_provider_bounds(task.provider_request, proposal.provider_request)
-        contract_id = _contract_id(
-            self.driver.identity.master_id, proposal.proposal_id, task.task_id
-        )
+        contract_id = _contract_id(identity.master_id, proposal.proposal_id, task.task_id)
         return NormalizedTaskContract(
             contract_id=contract_id,
             task_id=task.task_id,
-            master=self.driver.identity,
+            master=identity,
             proposal_id=proposal.proposal_id,
             strategy=task.policy.strategy,
             candidate_count=proposal.candidate_count,

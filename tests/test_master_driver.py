@@ -21,6 +21,7 @@ from omnipanel.master_driver import (
     MasterLifecycleError,
     MasterLifecycleErrorCode,
     MasterProposal,
+    MasterProvenance,
     ProposedSubtask,
 )
 
@@ -160,6 +161,19 @@ def test_driver_replacement_preserves_normalized_domain_shape() -> None:
     assert first.contract.strategy == second.contract.strategy == task.policy.strategy
     assert first.contract.provider_request == second.contract.provider_request
     assert first.contract.master.master_id != second.contract.master.master_id
+
+
+def test_normalize_rejects_provenance_for_another_driver() -> None:
+    lifecycle = MasterLifecycle(_driver(identity=_master("master-a", "driver-a")))
+    foreign_provenance = MasterProvenance(
+        driver_id="driver-b",
+        context_sha256="0" * 64,
+    )
+
+    with pytest.raises(MasterLifecycleError) as caught:
+        lifecycle.normalize(_task(), _proposal(), foreign_provenance)
+
+    assert caught.value.diagnostic.code is MasterLifecycleErrorCode.PROVENANCE_MISMATCH
 
 
 def test_master_cannot_target_another_task() -> None:

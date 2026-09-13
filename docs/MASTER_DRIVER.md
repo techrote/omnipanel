@@ -31,6 +31,7 @@ The canonical task and coordinator inputs remain authoritative. A master cannot:
 - weaken required isolation;
 - exceed task resource quantities;
 - relax a specific authoritative provider class;
+- substitute provenance belonging to another master driver;
 - cause a normalized candidate count to diverge from the actual adjudication candidate set;
 - adjudicate another contract or select a candidate outside the request;
 - cite evidence IDs that were not supplied to the adjudication request.
@@ -53,7 +54,7 @@ Conversation/model context is not copied wholesale into task contracts. `MasterP
 - SHA-256 digest of the supplied context;
 - optional bounded conversation/location reference.
 
-The canonical model, when applicable, belongs to `MasterIdentityRecord.model`.
+Normalization verifies that the provenance `driver_id` matches the active `MasterIdentityRecord.driver_id`; callers cannot normalize a proposal while attributing it to another driver. The canonical model, when applicable, belongs to `MasterIdentityRecord.model`.
 
 ## Decomposition
 
@@ -65,6 +66,6 @@ Master proposals may include bounded local decomposition steps. Step IDs and dep
 
 ## Diagnostics
 
-`MasterLifecycleError` carries stable typed codes for unavailable masters, task mismatch, missing user policy, strategy/candidate conflicts, invalid candidate sets, provider-boundary broadening, adjudication mismatch, unknown candidate selection and evidence-set mismatch. The operator/service layer can present these without parsing model prose.
+`MasterLifecycleError` carries stable typed codes for unavailable masters, provenance mismatch, task mismatch, missing user policy, strategy/candidate conflicts, invalid candidate sets, provider-boundary broadening, adjudication mismatch, unknown candidate selection and evidence-set mismatch. The operator/service layer can present these without parsing model prose.
 
 Automated coverage is in `tests/test_master_driver.py`.
