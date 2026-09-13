@@ -61,7 +61,9 @@ live. Normal shutdown removes only a lock whose random token proves ownership.
 
 Migration statements execute individually inside the same explicit transaction. The
 implementation intentionally avoids `sqlite3.executescript()` because it can commit an
-existing transaction implicitly.
+existing transaction implicitly. Verification also injects a migration failure after a DDL
+statement and proves that both the partial table and the schema-version advance roll back,
+while the single-instance lock is released.
 
 `PRAGMA user_version` is the durable state schema-generation marker. OP-002 record-level
 `schema_version` remains independently validated when records are read.
@@ -78,6 +80,11 @@ so the effect journal separates intent from known outcome:
 | `aborted` effect | `aborted` | known non-success |
 | `reserved` / `active` resource reservation | `indeterminate` | provider ownership must be re-qualified |
 | `released` reservation | `released` | no live ownership is asserted |
+
+An `indeterminate` effect is deliberately not terminal proof. After an external recovery
+workflow establishes the real outcome, `StateStore.settle_effect()` may reconcile it to
+`committed` or `aborted`. The reconciled outcome then survives subsequent restarts. Already
+terminal `committed`/`aborted` outcomes cannot be rewritten to a contradictory state.
 
 This prevents a crash between a remote side effect and local acknowledgement from becoming
 invented success. OP-004 and later provider services can build recovery workflows on this
