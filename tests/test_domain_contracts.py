@@ -9,7 +9,6 @@ from pydantic import ValidationError
 
 from omnipanel.domain import contracts as schema
 
-
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "op002_examples.json"
 
 
