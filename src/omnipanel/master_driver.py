@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import hashlib
 from enum import StrEnum
-from typing import Protocol
+from typing import Never, Protocol
 
 from pydantic import Field, model_validator
 
@@ -177,6 +177,7 @@ class MasterLifecycleErrorCode(StrEnum):
     USER_POLICY_REQUIRED = "user-policy-required"
     STRATEGY_CONFLICT = "strategy-conflict"
     CANDIDATE_COUNT_INVALID = "candidate-count-invalid"
+    CANDIDATE_SET_INVALID = "candidate-set-invalid"
     PROVIDER_CLASS_BROADENED = "provider-class-broadened"
     CAPABILITY_BROADENED = "capability-broadened"
     RESOURCE_BROADENED = "resource-broadened"
@@ -185,6 +186,7 @@ class MasterLifecycleErrorCode(StrEnum):
     ISOLATION_WEAKENED = "isolation-weakened"
     ADJUDICATION_MISMATCH = "adjudication-mismatch"
     UNKNOWN_CANDIDATE = "unknown-candidate"
+    EVIDENCE_MISMATCH = "evidence-mismatch"
 
 
 class MasterLifecycleDiagnostic(ContractModel):
@@ -227,6 +229,16 @@ class MasterLifecycle:
         intake = MasterTaskIntake(task=task, provenance=provenance)
         proposal = self.driver.propose(intake)
         contract = self.normalize(task, proposal, provenance)
+        if len(candidate_ids) != contract.candidate_count:
+            self._fail(
+                MasterLifecycleErrorCode.CANDIDATE_COUNT_INVALID,
+                "actual candidate count does not match normalized master proposal",
+            )
+        if len(candidate_ids) != len(set(candidate_ids)):
+            self._fail(
+                MasterLifecycleErrorCode.CANDIDATE_SET_INVALID,
+                "candidate IDs must be unique before adjudication",
+            )
         request = MasterAdjudicationRequest(
             contract_id=contract.contract_id,
             task_id=task.task_id,
@@ -273,7 +285,9 @@ class MasterLifecycle:
                 "race/diversity strategy requires at least two candidates",
             )
         self._validate_provider_bounds(task.provider_request, proposal.provider_request)
-        contract_id = _contract_id(self.driver.identity.master_id, proposal.proposal_id, task.task_id)
+        contract_id = _contract_id(
+            self.driver.identity.master_id, proposal.proposal_id, task.task_id
+        )
         return NormalizedTaskContract(
             contract_id=contract_id,
             task_id=task.task_id,
@@ -347,9 +361,14 @@ class MasterLifecycle:
                 MasterLifecycleErrorCode.UNKNOWN_CANDIDATE,
                 "adjudication selected a candidate outside the request",
             )
+        if not set(adjudication.evidence_ids).issubset(request.evidence_ids):
+            self._fail(
+                MasterLifecycleErrorCode.EVIDENCE_MISMATCH,
+                "adjudication cites evidence outside the supplied evidence set",
+            )
 
     @staticmethod
-    def _fail(code: MasterLifecycleErrorCode, summary: str) -> None:
+    def _fail(code: MasterLifecycleErrorCode, summary: str) -> Never:
         raise MasterLifecycleError(MasterLifecycleDiagnostic(code=code, summary=summary))
 
 
@@ -374,7 +393,11 @@ class FakeMasterDriver:
         return self._identity
 
     def status(self) -> MasterDriverStatus:
-        detail = None if self._availability is MasterAvailability.AVAILABLE else "fake master unavailable"
+        detail = (
+            None
+            if self._availability is MasterAvailability.AVAILABLE
+            else "fake master unavailable"
+        )
         return MasterDriverStatus(availability=self._availability, detail=detail)
 
     def propose(self, intake: MasterTaskIntake) -> MasterProposal:
@@ -387,7 +410,7 @@ class FakeMasterDriver:
 
 
 def _contract_id(master_id: str, proposal_id: str, task_id: str) -> str:
-    digest = hashlib.sha256(f"{master_id}:{proposal_id}:{task_id}".encode("utf-8")).hexdigest()[:32]
+    digest = hashlib.sha256(f"{master_id}:{proposal_id}:{task_id}".encode()).hexdigest()[:32]
     return f"master-contract-{digest}"
 
 
