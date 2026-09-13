@@ -20,6 +20,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_valida
 from omnipanel.domain.contracts import (
     DisplayText,
     LoadBearing,
+    LocationText,
     OpaqueId,
     RepositoryRef,
     StrictBool,
@@ -159,7 +160,9 @@ def _cycle_residue(tasks: Mapping[str, WorkflowTaskSpec]) -> tuple[str, ...]:
         for predecessor in task.deps:
             successors[predecessor].append(task.id)
 
-    queue: deque[str] = deque(sorted(task_id for task_id, degree in indegree.items() if degree == 0))
+    queue: deque[str] = deque(
+        sorted(task_id for task_id, degree in indegree.items() if degree == 0)
+    )
     visited = 0
     while queue:
         current = queue.popleft()
@@ -217,9 +220,7 @@ class WorkflowManifest(WorkflowModel):
 
         missing_membership = sorted(set(task_map) - set(membership))
         if missing_membership:
-            raise ValueError(
-                "tasks missing metaissue membership: " + ", ".join(missing_membership)
-            )
+            raise ValueError("tasks missing metaissue membership: " + ", ".join(missing_membership))
 
         for task in self.tasks:
             for predecessor in task.deps:
@@ -249,7 +250,7 @@ class IssueBindings(WorkflowModel):
     repository: RepositoryRef
     metaissues: dict[str, PositiveIssueNumber]
     tasks: dict[str, PositiveIssueNumber | None]
-    publication_blocks: dict[str, DisplayText] = Field(default_factory=dict)
+    publication_blocks: dict[str, LocationText] = Field(default_factory=dict)
 
     @field_validator("schema_version", mode="before")
     @classmethod
@@ -372,11 +373,15 @@ class TaskEvidence(WorkflowModel):
     def _terminal_evidence_is_explicit(self) -> Self:
         if self.disposition in _TERMINAL_DISPOSITIONS and not self.evidence_reconciled:
             raise ValueError("terminal task disposition requires reconciled evidence")
-        if self.disposition in {
-            CompletionDisposition.NO_GO,
-            CompletionDisposition.DEFERRED,
-            CompletionDisposition.BLOCKED,
-        } and self.note is None:
+        if (
+            self.disposition
+            in {
+                CompletionDisposition.NO_GO,
+                CompletionDisposition.DEFERRED,
+                CompletionDisposition.BLOCKED,
+            }
+            and self.note is None
+        ):
             raise ValueError(f"{self.disposition.value} disposition requires an explicit note")
         return self
 
