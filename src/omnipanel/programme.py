@@ -191,10 +191,7 @@ def build_bulk_optional_policy_plan(snapshot: ApplicationSnapshot) -> BulkPolicy
     for task in snapshot.tasks:
         current = effective_policy(snapshot, task)
         target = _validated_policy(task.policy, user_decision=None)
-        if (
-            current.requires_explicit_user_decision()
-            or target.requires_explicit_user_decision()
-        ):
+        if current.requires_explicit_user_decision() or target.requires_explicit_user_decision():
             mandatory.append(task.task_id)
         else:
             updates.append((task.task_id, target))
