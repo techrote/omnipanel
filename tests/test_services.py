@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 from omnipanel.config import AppConfig
-from omnipanel.domain.contracts import ProjectRecord, TaskRecord
+from omnipanel.domain.contracts import DagEdge, ModelIdentityRecord, ProjectRecord, TaskRecord
 from omnipanel.services import (
     ApplicationServices,
     BoundedUpdateStream,
@@ -36,6 +36,10 @@ def _project() -> ProjectRecord:
 
 def _task() -> TaskRecord:
     return TaskRecord.model_validate(_fixture()["task"])
+
+
+def _model_identity() -> ModelIdentityRecord:
+    return ModelIdentityRecord.model_validate(_fixture()["model_identity"])
 
 
 def test_services_require_open_store(tmp_path: Path) -> None:
@@ -69,6 +73,23 @@ def test_disconnect_reconnect_replays_bounded_updates(tmp_path: Path) -> None:
     assert sync.snapshot is None
     assert [update.entity_type for update in sync.updates] == ["project", "task"]
     assert [update.sequence for update in sync.updates] == [1, 2]
+
+
+def test_topology_and_canonical_model_views_are_present(tmp_path: Path) -> None:
+    edge = DagEdge(predecessor_task_id="OP-003", successor_task_id="OP-004")
+    model = _model_identity()
+    with StateStore(_config(tmp_path)) as store:
+        services = ApplicationServices(store)
+        start = services.connect().cursor
+        edge_key = services.put_record(edge)
+        services.put_record(model)
+        sync = services.connect(start)
+        snapshot = services.snapshot()
+
+    assert edge_key == "OP-003->OP-004"
+    assert sync.updates[0].entity_id == edge_key
+    assert snapshot.dag_edges == (edge,)
+    assert snapshot.model_identities == (model,)
 
 
 def test_overflowed_cursor_falls_back_to_snapshot(tmp_path: Path) -> None:
@@ -118,7 +139,10 @@ def test_policy_and_resource_mutations_emit_typed_updates(tmp_path: Path) -> Non
         sync = services.connect(start)
         snapshot = services.snapshot()
 
-    assert [update.topic for update in sync.updates] == [UpdateTopic.POLICY, UpdateTopic.RESOURCE]
+    assert [update.topic for update in sync.updates] == [
+        UpdateTopic.POLICY,
+        UpdateTopic.RESOURCE,
+    ]
     assert snapshot.resources.total == 1
     assert snapshot.resources.active == 1
     assert snapshot.resources.cpu_millicores == 1000
