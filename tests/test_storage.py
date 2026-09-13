@@ -87,7 +87,11 @@ def test_generation_zero_migrates_without_erasing_unrelated_legacy_data(tmp_path
 
     with StateStore(config) as store:
         assert store.schema_version == 1
-        row = store._require_connection().execute("SELECT value FROM legacy_marker").fetchone()
+        row = (
+            store._require_connection()
+            .execute("SELECT value FROM legacy_marker")
+            .fetchone()
+        )
         assert row is not None
         assert row[0] == "preserve-me"
         tables = {
@@ -232,9 +236,13 @@ def test_component_observation_persists_and_rejects_raw_credentials(tmp_path: Pa
             "qualified": True,
             "latency_ms": 12,
         }
-        rows = reopened._require_connection().execute(
-            "SELECT count(*) FROM component_observations WHERE observation_id='bad-probe'"
-        ).fetchone()
+        rows = (
+            reopened._require_connection()
+            .execute(
+                "SELECT count(*) FROM component_observations WHERE observation_id='bad-probe'"
+            )
+            .fetchone()
+        )
         assert rows is not None
         assert rows[0] == 0
 
