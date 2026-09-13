@@ -52,7 +52,9 @@ class OperatorApp(App[None]):
         self.config = config
         self.services = services
         self._panel = "overview"
-        self._status = "BLOCKER: execution disabled until a qualified provider and policy permit it."
+        self._status = (
+            "BLOCKER: execution disabled until a qualified provider and policy permit it."
+        )
 
     def compose(self) -> ComposeResult:
         yield Header()
@@ -126,15 +128,12 @@ class OperatorApp(App[None]):
         if panel == "tasks":
             if not snapshot.tasks:
                 return "No durable tasks."
-            return "\n".join(
-                f"{task.task_id}  {task.display_name}" for task in snapshot.tasks
-            )
+            return "\n".join(f"{task.task_id}  {task.display_name}" for task in snapshot.tasks)
         if panel == "runs":
             if not snapshot.runs:
                 return "No durable runs."
             return "\n".join(
-                f"{run.run_id}  {run.status.value}  task={run.task_id}"
-                for run in snapshot.runs
+                f"{run.run_id}  {run.status.value}  task={run.task_id}" for run in snapshot.runs
             )
         if panel == "evidence":
             if not snapshot.evidence:
@@ -151,12 +150,13 @@ class OperatorApp(App[None]):
                 for item in snapshot.model_identities
             ]
             assessments = [
-                f"{item.model.provider_id}/{item.model.model_id}  "
-                f"safety={item.safety_state.value}"
+                f"{item.model.provider_id}/{item.model.model_id}  safety={item.safety_state.value}"
                 for item in snapshot.models
             ]
-            return "Identities\n" + "\n".join(identities or ["(none)"]) + (
-                "\n\nAssessments\n" + "\n".join(assessments or ["(none)"])
+            return (
+                "Identities\n"
+                + "\n".join(identities or ["(none)"])
+                + ("\n\nAssessments\n" + "\n".join(assessments or ["(none)"]))
             )
         return (
             f"Durable DB: {self.services.store.paths.database}\n"
