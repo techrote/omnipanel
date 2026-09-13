@@ -1,0 +1,87 @@
+{
+  "capability_discovery": {
+    "contract": {"component_id": "ansible", "contract_id": "omnipanel-execution", "contract_version": "synthetic-1"},
+    "message_type": "capability-discovery",
+    "provider_id": "ansible-synthetic",
+    "capabilities": ["job.execute", "job.status", "evidence.report", "resource.summary"]
+  },
+  "unsupported_discovery": {
+    "contract": {"component_id": "ansible", "contract_id": "omnipanel-execution", "contract_version": "synthetic-2"},
+    "message_type": "capability-discovery",
+    "provider_id": "ansible-future",
+    "capabilities": ["job.execute"]
+  },
+  "resource_summary": {
+    "contract": {"component_id": "ansible", "contract_id": "omnipanel-execution", "contract_version": "synthetic-1"},
+    "message_type": "resource-provider-summary",
+    "provider_id": "ansible-synthetic",
+    "total": {"cpu_millicores": 8000, "memory_mib": 16384, "storage_mib": 32768, "gpu_count": 1},
+    "available": {"cpu_millicores": 6000, "memory_mib": 12288, "storage_mib": 24576, "gpu_count": 1}
+  },
+  "job_proposal": {
+    "contract": {"component_id": "ansible", "contract_id": "omnipanel-execution", "contract_version": "synthetic-1"},
+    "message_type": "job-proposal",
+    "job_id": "job-op012-001",
+    "task_id": "OP-012",
+    "required_capabilities": ["job.execute", "evidence.report"],
+    "resources": {"cpu_millicores": 2000, "memory_mib": 4096, "wall_time_seconds": 900},
+    "payload_ref": "fixture:op012:job-001"
+  },
+  "status_running": {
+    "contract": {"component_id": "ansible", "contract_id": "omnipanel-execution", "contract_version": "synthetic-1"},
+    "message_type": "job-status",
+    "job_id": "job-op012-001",
+    "sequence": 2,
+    "lifecycle": "running",
+    "completeness": "complete",
+    "observed_at": "2026-09-13T21:00:00+01:00",
+    "evidence_ids": []
+  },
+  "status_partial": {
+    "contract": {"component_id": "ansible", "contract_id": "omnipanel-execution", "contract_version": "synthetic-1"},
+    "message_type": "job-status",
+    "job_id": "job-op012-001",
+    "sequence": 3,
+    "lifecycle": "running",
+    "completeness": "partial",
+    "observed_at": "2026-09-13T21:00:01+01:00",
+    "evidence_ids": []
+  },
+  "status_partial_terminal": {
+    "contract": {"component_id": "ansible", "contract_id": "omnipanel-execution", "contract_version": "synthetic-1"},
+    "message_type": "job-status",
+    "job_id": "job-op012-001",
+    "sequence": 4,
+    "lifecycle": "succeeded",
+    "completeness": "partial",
+    "observed_at": "2026-09-13T21:00:02+01:00",
+    "evidence_ids": ["evidence-op012-001"]
+  },
+  "job_result": {
+    "contract": {"component_id": "ansible", "contract_id": "omnipanel-execution", "contract_version": "synthetic-1"},
+    "message_type": "job-result",
+    "job_id": "job-op012-001",
+    "lifecycle": "succeeded",
+    "evidence_ids": ["evidence-op012-001"],
+    "detail": "synthetic fixture completed successfully"
+  },
+  "evidence_report": {
+    "contract": {"component_id": "ansible", "contract_id": "omnipanel-execution", "contract_version": "synthetic-1"},
+    "message_type": "evidence-report",
+    "job_id": "job-op012-001",
+    "evidence": [
+      {
+        "schema_version": 1,
+        "record_type": "evidence",
+        "evidence_id": "evidence-op012-001",
+        "kind": "test-report",
+        "producer": {"producer_type": "execution-provider", "producer_id": "ansible-synthetic"},
+        "location": "fixture://op012/result-001",
+        "created_at": "2026-09-13T21:00:03+01:00",
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "media_type": "application/json",
+        "test_summary": {"total": 5, "passed": 5, "failed": 0, "errors": 0, "skipped": 0}
+      }
+    ]
+  }
+}
