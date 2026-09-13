@@ -15,7 +15,7 @@ from omnipanel.config import ConfigError, load_config
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="omnipanel",
-        description="Omnipanel local operator interface. Execution remains policy-gated.",
+        description="Omnipanel bootstrap and local operator interface. Execution remains policy-gated.",
         allow_abbrev=False,
     )
     parser.add_argument("--version", action="version", version=f"Omnipanel {__version__}")
