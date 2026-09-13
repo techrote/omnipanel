@@ -147,9 +147,7 @@ class InterfaceRegistry:
             adapter_qualification_evidence_ids=exact.qualification_evidence_ids,
         )
 
-    def persist_qualification(
-        self, store: StateStore, item: AdapterContractQualification
-    ) -> str:
+    def persist_qualification(self, store: StateStore, item: AdapterContractQualification) -> str:
         if item not in self._qualifications:
             raise RegistryConfigurationError("qualification is not registered")
         observation_id = _observation_id(
