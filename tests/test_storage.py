@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pytest
 
+import omnipanel.storage as storage_module
 from omnipanel.config import AppConfig
 from omnipanel.domain.contracts import (
     CandidateRecord,
@@ -87,11 +88,7 @@ def test_generation_zero_migrates_without_erasing_unrelated_legacy_data(tmp_path
 
     with StateStore(config) as store:
         assert store.schema_version == 1
-        row = (
-            store._require_connection()
-            .execute("SELECT value FROM legacy_marker")
-            .fetchone()
-        )
+        row = store._require_connection().execute("SELECT value FROM legacy_marker").fetchone()
         assert row is not None
         assert row[0] == "preserve-me"
         tables = {
@@ -107,6 +104,39 @@ def test_generation_zero_migrates_without_erasing_unrelated_legacy_data(tmp_path
             "resource_reservations",
             "effect_journal",
         } <= tables
+
+
+def test_failed_migration_rolls_back_schema_and_releases_lock(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config = _config(tmp_path)
+
+    def fail_after_create(connection: sqlite3.Connection) -> None:
+        connection.execute("CREATE TABLE migration_should_rollback(value TEXT)")
+        raise sqlite3.OperationalError("synthetic migration failure")
+
+    monkeypatch.setitem(storage_module._MIGRATIONS, 0, fail_after_create)
+
+    with pytest.raises(StateMigrationError, match="0->1"):
+        StateStore(config).open()
+
+    assert not (config.data_dir / "state.sqlite3.lock").exists()
+    database = config.data_dir / "state.sqlite3"
+    connection = sqlite3.connect(database)
+    try:
+        version = connection.execute("PRAGMA user_version").fetchone()[0]
+        leaked_table = connection.execute(
+            """
+            SELECT name FROM sqlite_master
+            WHERE type='table' AND name='migration_should_rollback'
+            """
+        ).fetchone()
+    finally:
+        connection.close()
+
+    assert version == 0
+    assert leaked_table is None
 
 
 def test_newer_database_generation_fails_closed(tmp_path: Path) -> None:
@@ -238,9 +268,7 @@ def test_component_observation_persists_and_rejects_raw_credentials(tmp_path: Pa
         }
         rows = (
             reopened._require_connection()
-            .execute(
-                "SELECT count(*) FROM component_observations WHERE observation_id='bad-probe'"
-            )
+            .execute("SELECT count(*) FROM component_observations WHERE observation_id='bad-probe'")
             .fetchone()
         )
         assert rows is not None
@@ -262,9 +290,11 @@ def test_transaction_exception_rolls_back_completely(tmp_path: Path) -> None:
                 )
                 raise RuntimeError("synthetic interruption")
 
-        count = store._require_connection().execute(
-            "SELECT count(*) FROM component_observations WHERE observation_id='rollback'"
-        ).fetchone()[0]
+        count = (
+            store._require_connection()
+            .execute("SELECT count(*) FROM component_observations WHERE observation_id='rollback'")
+            .fetchone()[0]
+        )
         assert count == 0
 
 
@@ -283,6 +313,24 @@ def test_interrupted_effect_reopens_as_indeterminate_not_success(tmp_path: Path)
         assert recovered.state is EffectState.INDETERMINATE
         assert reopened.list_effects(EffectState.COMMITTED) == ()
         assert reopened.list_effects(EffectState.INDETERMINATE) == (recovered,)
+
+
+@pytest.mark.parametrize("outcome", [EffectState.COMMITTED, EffectState.ABORTED])
+def test_indeterminate_effect_can_be_reconciled_after_restart(
+    tmp_path: Path,
+    outcome: EffectState,
+) -> None:
+    config = _config(tmp_path)
+    with StateStore(config) as store:
+        store.prepare_effect("effect-reconcile", "provider-call")
+
+    with StateStore(config) as reopened:
+        assert reopened.load_effect("effect-reconcile").state is EffectState.INDETERMINATE
+        reconciled = reopened.settle_effect("effect-reconcile", outcome)
+        assert reconciled.state is outcome
+
+    with StateStore(config) as verified:
+        assert verified.load_effect("effect-reconcile").state is outcome
 
 
 def test_committed_effect_remains_committed_after_restart(tmp_path: Path) -> None:
