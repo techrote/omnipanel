@@ -24,7 +24,7 @@ No active Ansible/Pickle worktree, CyberSand run, Interloc repository, Ohmy repo
 | machine-readable task graph | complete | workflow.json: 9 metaissues, 48 stable task IDs |
 | stable-ID issue binding | complete with explicit gaps | issue-bindings.json |
 | GitHub issue deployment | complete for 55 published issues; 2 stable tasks blocked from publication | ROADMAP, BLOCKERS, live issue readback |
-| runtime implementation | started; OP-001 complete | PR #56, OP-001 evidence/review, merge `16d10538f597d0cb199224b71a68e3246f0024dd` |
+| runtime implementation | active; OP-001 complete, OP-002 candidate under Steel review gates | PR #56 / #57 and retained evidence |
 
 ## Published issue set
 
@@ -69,10 +69,39 @@ OP-001 / issue #10 is the first completed runtime task.
 - manual Windows 11 / Windows Terminal bootstrap smoke qualification: PASS, retained on issue #10;
 - no OP-002 code was included in OP-001.
 
-The OP-001 prerequisite is therefore evidence-complete and merged. OP-002 / issue #11 is **ready** under `workflow.json`; this readiness transition does not itself start OP-002 or satisfy any OP-002 Steel review gate.
+The OP-001 prerequisite is evidence-complete and merged.
+
+## Runtime progression — OP-002
+
+OP-002 / issue #11 is now in implementation/self-verification on draft PR #57,
+branch `implement/op-002-core-schemas`, from reconciled base
+`5e34d33e19d4d5054f8f810d40936d10dd220735`.
+
+The candidate defines versioned typed project/task/run/evidence/policy contracts and
+representative fixtures without implementing OP-003 persistence, OP-004 services,
+OP-005 readiness, OP-006 compatibility negotiation or OP-007 production TUI behavior.
+Its schema contract is documented in `docs/SCHEMA_CONTRACTS.md`.
+
+Tested implementation head `2e41faa563202ebbfbd21411f85cb46ed9b1b9ef` passed
+Foundation CI run `34729138613` across Windows/Linux × Python 3.12/3.13/3.14:
+126 passed and 3 pre-existing opposite-platform skips in every job, with Ruff, format,
+strict mypy, build and clean dependency-complete wheel validation also passing.
+All six retained artifacts were independently downloaded and reconciled in
+`docs/evidence/OP-002-ci.json`; implementation/self-verification evidence is in
+`docs/evidence/OP-002.md`.
+
+This is **not** OP-002 completion. OP-002 is Steel, so the following remain mandatory and
+separate from implementer self-verification:
+
+- independent implementation review — NOT RUN;
+- independent verification review — NOT RUN;
+- explicit user adjudication before consequential promotion/merge — PENDING;
+- merge — NOT DONE.
+
+Issue #11 remains open and OP-003 is not released by this candidate result.
 
 Later concurrency remains governed by `workflow.json` and ROADMAP rather than issue order.
 
 ## Current completion statement
 
-The **planning and issue-decomposition baseline is complete** for the requested Omnipanel programme, subject to the two explicit connector publication blocks. Runtime implementation has now begun and OP-001 is complete. OP-002 is the next ready task. Live component qualification, VM/provider integration and performance claims remain future work unless separately evidenced.
+The **planning and issue-decomposition baseline is complete** for the requested Omnipanel programme, subject to the two explicit connector publication blocks. OP-001 is complete. OP-002 has a green implementation candidate and durable self-verification evidence but remains pending its independent Steel review lanes and user adjudication. Live component qualification, durable state, VM/provider integration and performance claims remain future work unless separately evidenced.
