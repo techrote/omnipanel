@@ -1,0 +1,63 @@
+{
+  "qualifications": [
+    {
+      "adapter_id": "ansible-adapter",
+      "component_id": "ansible",
+      "contract_id": "execution",
+      "contract_version": "1.0",
+      "qualification_evidence_ids": ["evidence-adapter-ansible-1.0"]
+    },
+    {
+      "adapter_id": "ansible-adapter",
+      "component_id": "ansible",
+      "contract_id": "execution",
+      "contract_version": "1.1",
+      "qualification_evidence_ids": ["evidence-adapter-ansible-1.1"]
+    },
+    {
+      "adapter_id": "interloc-adapter",
+      "component_id": "interloc",
+      "contract_id": "evidence-broker",
+      "contract_version": "1.0",
+      "qualification_evidence_ids": ["evidence-adapter-interloc-1.0"]
+    }
+  ],
+  "observations": {
+    "ansible_v1": {
+      "schema_version": 1,
+      "record_type": "component-contract",
+      "ref": {
+        "component_id": "ansible",
+        "contract_id": "execution",
+        "contract_version": "1.0"
+      },
+      "repository": "techrote/ansible",
+      "source_commit": "9f27ca4f4c9317ed8246851f2961adc8bdb2de74",
+      "qualification_evidence_ids": ["evidence-observed-ansible-1.0"]
+    },
+    "ansible_v2": {
+      "schema_version": 1,
+      "record_type": "component-contract",
+      "ref": {
+        "component_id": "ansible",
+        "contract_id": "execution",
+        "contract_version": "2.0"
+      },
+      "repository": "techrote/ansible",
+      "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "qualification_evidence_ids": ["evidence-observed-ansible-2.0"]
+    },
+    "interloc_v1": {
+      "schema_version": 1,
+      "record_type": "component-contract",
+      "ref": {
+        "component_id": "interloc",
+        "contract_id": "evidence-broker",
+        "contract_version": "1.0"
+      },
+      "repository": "techrote/interloc",
+      "source_commit": "491be0104df52b2b9307e7662b2bcb8d6467d169",
+      "qualification_evidence_ids": ["evidence-observed-interloc-1.0"]
+    }
+  }
+}
