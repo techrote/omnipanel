@@ -101,6 +101,56 @@ async def test_bulk_defaults_skip_mandatory_tasks(tmp_path: Path) -> None:
 
 
 @pytest.mark.asyncio
+async def test_project_and_metaissue_navigation_moves_task_scope(tmp_path: Path) -> None:
+    config = AppConfig(data_dir=(tmp_path / "navigation-ui").absolute())
+    base = _task()
+    tasks = (
+        base.model_copy(
+            update={
+                "task_id": "OP-101",
+                "project_id": "proj-a",
+                "parent_metaissue_id": "OP-M101",
+                "display_name": "Project A / Metaissue A",
+            }
+        ),
+        base.model_copy(
+            update={
+                "task_id": "OP-102",
+                "project_id": "proj-a",
+                "parent_metaissue_id": "OP-M102",
+                "display_name": "Project A / Metaissue B",
+            }
+        ),
+        base.model_copy(
+            update={
+                "task_id": "OP-103",
+                "project_id": "proj-b",
+                "parent_metaissue_id": "OP-M103",
+                "display_name": "Project B / Metaissue C",
+            }
+        ),
+    )
+    with StateStore(config) as store:
+        services = ApplicationServices(store)
+        for task in tasks:
+            services.put_record(task)
+        app = OperatorApp(config, services)
+        async with app.run_test(size=(260, 32)) as pilot:
+            assert await pilot.click("#nav-tasks")
+            assert "project=proj-a metaissue=OP-M101 task=OP-101" in _plain(
+                app, "#panel-body"
+            )
+            assert await pilot.click("#metaissue-next")
+            assert "project=proj-a metaissue=OP-M102 task=OP-102" in _plain(
+                app, "#panel-body"
+            )
+            assert await pilot.click("#project-next")
+            assert "project=proj-b metaissue=OP-M103 task=OP-103" in _plain(
+                app, "#panel-body"
+            )
+
+
+@pytest.mark.asyncio
 async def test_workflow_readiness_is_visible_without_becoming_ui_authority(
     tmp_path: Path,
 ) -> None:
