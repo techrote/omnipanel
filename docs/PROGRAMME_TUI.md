@@ -10,6 +10,8 @@ Administrative GitHub closure is intentionally separate from evidence completion
 
 When no workflow engine is supplied, the panel still renders the durable project/metaissue/task/DAG records from `ApplicationServices`. This keeps the production shell useful without making the UI discover repository files or contact GitHub implicitly.
 
+The task action strip provides explicit previous/next traversal at project, metaissue and task scope. Project/metaissue traversal moves the selected task to the first durable task in the adjacent stable scope and the panel prints the selected `project_id`, `parent_metaissue_id` and `task_id`. This supplies mouse-driven hierarchy navigation without introducing a second DAG or workflow authority in the widgets.
+
 ## Policy editing
 
 The mouse-driven task action strip selects durable tasks and edits a draft of the effective task policy. Controls cycle:
