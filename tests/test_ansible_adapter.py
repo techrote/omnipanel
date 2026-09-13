@@ -78,6 +78,16 @@ def test_malformed_payload_is_typed_and_operator_readable() -> None:
     assert "schema validation" in caught.value.diagnostic.summary
 
 
+def test_malformed_message_type_cannot_break_typed_error_boundary() -> None:
+    for bad_type in ("", " bad type !!! ", "x" * 200):
+        payload = _payload("job_proposal")
+        payload["message_type"] = bad_type
+        with pytest.raises(AnsibleAdapterError) as caught:
+            SyntheticAnsibleAdapter().decode(payload)
+        assert caught.value.diagnostic.code is AnsibleAdapterErrorCode.MALFORMED_PAYLOAD
+        assert caught.value.diagnostic.message_type == "unknown"
+
+
 def test_non_object_payload_is_typed_error() -> None:
     with pytest.raises(AnsibleAdapterError) as caught:
         SyntheticAnsibleAdapter().decode(["not", "an", "object"])
