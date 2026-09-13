@@ -645,10 +645,13 @@ class EvidenceDescriptorRecord(VersionedRecord):
     created_at: datetime
     sha256: Sha256 | None = None
     source_commit: CommitSha | None = None
-    media_type: Annotated[
-        str,
-        StringConstraints(strict=True, strip_whitespace=True, min_length=3, max_length=127),
-    ] | None = None
+    media_type: (
+        Annotated[
+            str,
+            StringConstraints(strict=True, strip_whitespace=True, min_length=3, max_length=127),
+        ]
+        | None
+    ) = None
     test_summary: TestSummary | None = None
 
     @field_validator("created_at")
