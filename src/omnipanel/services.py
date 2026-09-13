@@ -12,9 +12,12 @@ from pydantic import Field, ValidationError
 from omnipanel.domain.contracts import (
     CandidateRecord,
     ContractModel,
+    DagEdge,
     EvidenceDescriptorRecord,
+    LocationText,
     MetaissueRecord,
     ModelAssessmentRecord,
+    ModelIdentityRecord,
     OpaqueId,
     ProjectRecord,
     RunRecord,
@@ -53,7 +56,7 @@ class ServiceUpdate(ContractModel):
     sequence: int = Field(strict=True, ge=1)
     topic: UpdateTopic
     entity_type: OpaqueId
-    entity_id: OpaqueId
+    entity_id: LocationText
 
 
 class PolicyView(ContractModel):
@@ -77,9 +80,11 @@ class ApplicationSnapshot(ContractModel):
     projects: tuple[ProjectRecord, ...]
     metaissues: tuple[MetaissueRecord, ...]
     tasks: tuple[TaskRecord, ...]
+    dag_edges: tuple[DagEdge, ...]
     runs: tuple[RunRecord, ...]
     candidates: tuple[CandidateRecord, ...]
     evidence: tuple[EvidenceDescriptorRecord, ...]
+    model_identities: tuple[ModelIdentityRecord, ...]
     models: tuple[ModelAssessmentRecord, ...]
     policies: tuple[PolicyView, ...]
     resources: ResourceSummary
@@ -173,9 +178,11 @@ class ApplicationServices:
             projects=self._records(ProjectRecord, "project"),
             metaissues=self._records(MetaissueRecord, "metaissue"),
             tasks=tasks,
+            dag_edges=self._records(DagEdge, "dag-edge"),
             runs=self._records(RunRecord, "run"),
             candidates=self._records(CandidateRecord, "candidate-state"),
             evidence=self._records(EvidenceDescriptorRecord, "evidence"),
+            model_identities=self._records(ModelIdentityRecord, "model-identity"),
             models=self._records(ModelAssessmentRecord, "model-assessment"),
             policies=self._policies(tasks),
             resources=self._resource_summary(),
