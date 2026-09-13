@@ -1,8 +1,9 @@
 # Development and startup
 
-OP-001 provides a Python package and an inert startup proof. It does not implement
-orchestration, state persistence, component negotiation or the OP-007 operator shell.
-Read `AGENT_CONTEXT.md` and the assigned issue before extending these boundaries.
+OP-001 provides the Python package and inert startup proof. OP-002 adds UI-independent,
+versioned domain contracts only; it does not implement orchestration effects, durable
+state, component negotiation or the OP-007 operator shell. Read `AGENT_CONTEXT.md`,
+the assigned issue and `SCHEMA_CONTRACTS.md` before extending these boundaries.
 
 ## Windows 11 / Windows Terminal
 
@@ -43,10 +44,11 @@ subcommand. Close the dashboard with its mouse button or `q`.
 .\.venv\Scripts\python.exe -m omnipanel --data-dir "C:\Omnipanel state" status
 ```
 
-The only supported TOML fields are `schema_version = 1`, `data_dir` and `log_level`.
-Unknown fields, unsupported versions, incorrect types, malformed input and files over
-64 KiB are errors. UTF-8, including an optional BOM, is accepted; UTF-16 is not.
-`log_level` is an inert typed setting, not an activated logging subsystem.
+The only supported startup TOML fields are `schema_version = 1`, `data_dir` and
+`log_level`. This startup configuration schema is separate from the OP-002 domain-record
+schemas. Unknown fields, unsupported versions, incorrect types, malformed input and
+files over 64 KiB are errors. UTF-8, including an optional BOM, is accepted; UTF-16 is
+not. `log_level` is an inert typed setting, not an activated logging subsystem.
 
 A configuration file is loaded only when explicitly named. There is no current-directory
 or home-directory discovery. A file-relative `data_dir` is relative to that file's parent;
@@ -65,6 +67,19 @@ JSON status uses ASCII escapes that round-trip Unicode paths, including when red
 to a legacy Windows console. TUI path text is rendered literally, not as markup.
 Exit codes: 0 for success/help, 2 for argument/configuration/noninteractive-TUI errors,
 3 if Textual is missing from an incorrectly installed environment.
+
+## Domain schema development
+
+OP-002 contracts live in `src/omnipanel/domain/contracts.py`; their identity, versioning,
+policy and scope invariants are documented in `docs/SCHEMA_CONTRACTS.md`. Synthetic
+representative records live in `tests/fixtures/op002_examples.json` and are exercised by
+`tests/test_domain_contracts.py`.
+
+Top-level domain records use explicit `schema_version = 1` and reject future/unknown
+versions rather than coercing them. Models are immutable and reject unknown fields.
+Provider/resource defaults are fail-closed: no network, writable paths or capability
+handles are granted by default and isolation remains required. These are data contracts,
+not durable storage or authority activation.
 
 ## Verification commands
 
@@ -99,27 +114,34 @@ prove durable execution/recovery, which belongs to later issues.
 
 ## Dependency rationale and update policy
 
-Runtime: Textual 8.2.8, the selected UI framework; configuration/CLI use only the
-standard library. No validation library, database, HTTP client, worker framework or
-component adapter is introduced by OP-001. `setuptools==82.0.1` provides a conventional
-PEP 517/518/621 build. Development tools are pytest 9.0.2, pytest-asyncio 1.3.0, Ruff
-0.16.7, mypy 2.3.1 and build 1.6.1. The chosen direct versions were checked against
-publisher documentation/package records during implementation.
+Runtime dependencies are intentionally small and direct:
+
+- Pydantic 2.13.5 provides strict typed validation, immutable/closed models and JSON
+  schema/serialization for the OP-002 domain-contract boundary.
+- Textual 8.2.8 remains the selected presentation framework from OP-001 and is not
+  imported by the domain contracts.
+
+Configuration/CLI otherwise use the standard library. OP-002 does not add a database,
+HTTP client, worker framework, component adapter or credential library.
+`setuptools==82.0.1` provides the conventional PEP 517/518/621 build. Development tools
+are pytest 9.0.2, pytest-asyncio 1.3.0, Ruff 0.16.7, mypy 2.3.1 and build 1.6.1.
 
 Direct dependency pins and SHA-pinned GitHub Actions make update choices explicit;
 this is **not a complete transitive lockfile or an offline reproducibility claim**.
 CI retains the actual resolved dependency set per platform. Review dependency updates
 and rerun the full matrix before changing pins. Do not bypass a failing check by
-weakening assertions, skipping Textual or silently broadening supported contracts.
+weakening assertions, skipping tests or silently broadening supported contracts.
 
 ## Completion boundary
 
 OP-001 has completed its required automated acceptance, independent Stone review,
-merge and post-merge reconciliation. The merged `main` state passed Foundation CI,
-and the manual Windows 11 / Windows Terminal bootstrap smoke qualification passed.
-The OP-001 evidence set remains in `docs/evidence/` and issue #10.
+merge and post-merge reconciliation. The OP-001 evidence set remains in
+`docs/evidence/` and issue #10.
 
-OP-002 / issue #11 is now ready because its OP-001 prerequisite evidence is merged.
-Read and execute OP-002 as its own Steel task; readiness does not mean implementation
-has already started or that its independent-review requirements are satisfied. Never
-modify `workflow.json`, issue bindings or load-bearing policy merely to bypass a gate.
+OP-002 / issue #11 is now in implementation/self-verification in draft PR #57. Its
+current candidate has passed the full automated Windows/Linux × Python 3.12/3.13/3.14
+matrix at the tested implementation head. Because OP-002 is **Steel**, automated green
+checks and implementer evidence are not completion: separate independent implementation
+review, independent verification review and explicit user adjudication before
+consequential promotion/merge remain mandatory. Do not start OP-003 or weaken
+`workflow.json`, issue bindings or load-bearing policy to bypass those gates.
