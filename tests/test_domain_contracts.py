@@ -4,8 +4,8 @@ import copy
 import json
 from pathlib import Path
 
-from pydantic import ValidationError
 import pytest
+from pydantic import ValidationError
 
 from omnipanel.domain import contracts as schema
 
