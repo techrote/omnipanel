@@ -1,0 +1,123 @@
+{
+  "task": "OP-002",
+  "repository": "techrote/omnipanel",
+  "pull_request": 57,
+  "base_sha": "5e34d33e19d4d5054f8f810d40936d10dd220735",
+  "tested_head_sha": "2e41faa563202ebbfbd21411f85cb46ed9b1b9ef",
+  "run_id": 34729138613,
+  "run_url": "https://github.com/techrote/omnipanel/actions/runs/34729138613",
+  "independent_implementation_review": "NOT RUN",
+  "independent_verification_review": "NOT RUN",
+  "merge": "NOT DONE",
+  "jobs": [
+    {
+      "matrix": "linux312",
+      "job_id": 103648584563,
+      "conclusion": "success",
+      "artifact_id": 10308992312,
+      "artifact_sha256": "181afbc5432ec471ad47f9194ba3dfebba5576f16d846947e9b1b691f165671c",
+      "junit_sha256": "4dfddcad6ceaf3ef2ded07d7468fdf5b923375ca658bce764cadce12fc26f7dd",
+      "python": "Python 3.12.14 (main, Aug 13 2026, 02:47:42) [GCC 13.3.0]",
+      "tests": {"tests": 129, "failures": 0, "errors": 0, "skipped": 3, "passed": 126},
+      "test_elapsed_seconds": 1.613,
+      "skipped_cases": [
+        {"name": "test_windows_drive_relative_paths_rejected[C:state]", "reason": "native Windows path semantics"},
+        {"name": "test_windows_drive_relative_paths_rejected[\\\\state]", "reason": "native Windows path semantics"},
+        {"name": "test_native_windows_absolute_path", "reason": "native Windows path semantics"}
+      ]
+    },
+    {
+      "matrix": "linux313",
+      "job_id": 103648584513,
+      "conclusion": "success",
+      "artifact_id": 10309082037,
+      "artifact_sha256": "cc15848e331007af8ce7c7dff3d0942eee7bacd702b1b1514c8955feeef055be",
+      "junit_sha256": "fbd022a7541aaa335236f1e895f878cf8fc01102ce508ef2bf80bfa56b6bb28b",
+      "python": "Python 3.13.15 (main, Aug  6 2026, 02:15:18) [GCC 13.3.0]",
+      "tests": {"tests": 129, "failures": 0, "errors": 0, "skipped": 3, "passed": 126},
+      "test_elapsed_seconds": 1.673,
+      "skipped_cases": [
+        {"name": "test_windows_drive_relative_paths_rejected[C:state]", "reason": "native Windows path semantics"},
+        {"name": "test_windows_drive_relative_paths_rejected[\\\\state]", "reason": "native Windows path semantics"},
+        {"name": "test_native_windows_absolute_path", "reason": "native Windows path semantics"}
+      ]
+    },
+    {
+      "matrix": "linux314",
+      "job_id": 103648584553,
+      "conclusion": "success",
+      "artifact_id": 10309156937,
+      "artifact_sha256": "391d014658d7e6c01fae315013d0dd73ad7f6365ae0fcc645dc874e0ec1647fc",
+      "junit_sha256": "0e5f648d81de9bebafce2c9c6f1fee81bcde90ea2e8b506a9e446603e14f9c3f",
+      "python": "Python 3.14.7 (main, Aug  6 2026, 02:19:46) [GCC 13.3.0]",
+      "tests": {"tests": 129, "failures": 0, "errors": 0, "skipped": 3, "passed": 126},
+      "test_elapsed_seconds": 1.783,
+      "skipped_cases": [
+        {"name": "test_windows_drive_relative_paths_rejected[C:state]", "reason": "native Windows path semantics"},
+        {"name": "test_windows_drive_relative_paths_rejected[\\\\state]", "reason": "native Windows path semantics"},
+        {"name": "test_native_windows_absolute_path", "reason": "native Windows path semantics"}
+      ]
+    },
+    {
+      "matrix": "windows312",
+      "job_id": 103648584539,
+      "conclusion": "success",
+      "artifact_id": 10308557060,
+      "artifact_sha256": "52391ebb6a44df5b30d3eb30c7d2682d0ea314bec28c6f50d8f29289555272a0",
+      "junit_sha256": "bd1de819f59be3814d5fbcf27e576371fbea7f02e0bb2bd5dd7614f0598e59f0",
+      "python": "Python 3.12.10 (tags/v3.12.10:0cc8128, Apr  8 2025, 12:21:36) [MSC v.1943 64 bit (AMD64)]",
+      "tests": {"tests": 129, "failures": 0, "errors": 0, "skipped": 3, "passed": 126},
+      "test_elapsed_seconds": 1.961,
+      "skipped_cases": [
+        {"name": "test_windows_paths_are_not_silently_reinterpreted_on_posix[C:\\\\state]", "reason": "foreign Windows paths on POSIX"},
+        {"name": "test_windows_paths_are_not_silently_reinterpreted_on_posix[C:state]", "reason": "foreign Windows paths on POSIX"},
+        {"name": "test_windows_paths_are_not_silently_reinterpreted_on_posix[\\\\\\\\server\\\\share\\\\state]", "reason": "foreign Windows paths on POSIX"}
+      ]
+    },
+    {
+      "matrix": "windows313",
+      "job_id": 103648584558,
+      "conclusion": "success",
+      "artifact_id": 10308697953,
+      "artifact_sha256": "78d6d8ebd143587cde4b5874b122cec898b48255ea836ce1c2f3ba1547545e32",
+      "junit_sha256": "25d35d43c79c5ebed71fc71c5cf6e46a83a0de18966a52b2dcd3d494b05f4e73",
+      "python": "Python 3.13.15 (tags/v3.13.15:4061bc4, Aug  5 2026, 13:05:39) [MSC v.1944 64 bit (AMD64)]",
+      "tests": {"tests": 129, "failures": 0, "errors": 0, "skipped": 3, "passed": 126},
+      "test_elapsed_seconds": 1.925,
+      "skipped_cases": [
+        {"name": "test_windows_paths_are_not_silently_reinterpreted_on_posix[C:\\\\state]", "reason": "foreign Windows paths on POSIX"},
+        {"name": "test_windows_paths_are_not_silently_reinterpreted_on_posix[C:state]", "reason": "foreign Windows paths on POSIX"},
+        {"name": "test_windows_paths_are_not_silently_reinterpreted_on_posix[\\\\\\\\server\\\\share\\\\state]", "reason": "foreign Windows paths on POSIX"}
+      ]
+    },
+    {
+      "matrix": "windows314",
+      "job_id": 103648584555,
+      "conclusion": "success",
+      "artifact_id": 10308362467,
+      "artifact_sha256": "6d7249ff61a0a10bfa2371fb38458f53aa96f8452dba68a9e37749f395076512",
+      "junit_sha256": "5b9d1424f3ef118060a679ae4484a0825f0d7454e1325c57e8c0a6abcd9f4d6a",
+      "python": "Python 3.14.7 (tags/v3.14.7:823f032, Aug  5 2026, 10:51:32) [MSC v.1944 64 bit (AMD64)]",
+      "tests": {"tests": 129, "failures": 0, "errors": 0, "skipped": 3, "passed": 126},
+      "test_elapsed_seconds": 1.617,
+      "skipped_cases": [
+        {"name": "test_windows_paths_are_not_silently_reinterpreted_on_posix[C:\\\\state]", "reason": "foreign Windows paths on POSIX"},
+        {"name": "test_windows_paths_are_not_silently_reinterpreted_on_posix[C:state]", "reason": "foreign Windows paths on POSIX"},
+        {"name": "test_windows_paths_are_not_silently_reinterpreted_on_posix[\\\\\\\\server\\\\share\\\\state]", "reason": "foreign Windows paths on POSIX"}
+      ]
+    }
+  ],
+  "resolved_direct_runtime": ["pydantic==2.13.5", "pydantic_core==2.46.5", "textual==8.2.8"],
+  "passed_steps": [
+    "editable install with development dependencies",
+    "Ruff lint",
+    "Ruff formatting",
+    "strict source mypy",
+    "unit/boundary/schema/headless Textual tests",
+    "isolated sdist and wheel build",
+    "clean dependency-complete wheel install outside checkout",
+    "dependency capture",
+    "artifact upload"
+  ],
+  "notes": "All six retained artifacts were downloaded and their ZIP digests matched GitHub's reported SHA-256 values. JUnit reports were parsed independently. The three skips in each job are the existing opposite-platform path tests; schema tests do not skip. Earlier runs 34728721773, 34728879067 and 34728989347 failed only Ruff formatting/import-block gates while mypy, pytest, build and clean-wheel checks passed; assertions were not weakened."
+}

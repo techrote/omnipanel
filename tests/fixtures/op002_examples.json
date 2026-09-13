@@ -1,0 +1,153 @@
+{
+  "project": {
+    "schema_version": 1,
+    "record_type": "project",
+    "project_id": "omnipanel",
+    "display_name": "Omnipanel",
+    "repository": "techrote/omnipanel",
+    "root_metaissue_ids": ["OP-M001"]
+  },
+  "metaissue": {
+    "schema_version": 1,
+    "record_type": "metaissue",
+    "metaissue_id": "OP-M100",
+    "project_id": "omnipanel",
+    "display_name": "Example integration envelope",
+    "child_task_ids": ["OP-101", "OP-102", "OP-103", "OP-104", "OP-105"],
+    "policy_defaults": {
+      "load_bearing": "stone",
+      "expected_value": "high",
+      "strategy": "single"
+    },
+    "evidence_gate_ids": ["meta-review"]
+  },
+  "dag_edges": [
+    {"schema_version": 1, "record_type": "dag-edge", "predecessor_task_id": "OP-101", "successor_task_id": "OP-105"},
+    {"schema_version": 1, "record_type": "dag-edge", "predecessor_task_id": "OP-102", "successor_task_id": "OP-105"},
+    {"schema_version": 1, "record_type": "dag-edge", "predecessor_task_id": "OP-103", "successor_task_id": "OP-105"},
+    {"schema_version": 1, "record_type": "dag-edge", "predecessor_task_id": "OP-104", "successor_task_id": "OP-105"}
+  ],
+  "task": {
+    "schema_version": 1,
+    "record_type": "task",
+    "task_id": "OP-002",
+    "project_id": "omnipanel",
+    "parent_metaissue_id": "OP-M001",
+    "display_name": "Define typed core task, run, evidence and policy schemas",
+    "prerequisite_task_ids": ["OP-001"],
+    "policy": {
+      "load_bearing": "steel",
+      "economics": {
+        "expected_value": "high",
+        "expected_wall_time": "medium",
+        "marginal_cost": "local"
+      },
+      "strategy": "single",
+      "review": {
+        "self_check_required": true,
+        "independent_implementation_reviews": 1,
+        "independent_verification_reviews": 1,
+        "consequential_promotion_requires_user": true
+      },
+      "user_decision": {
+        "decision_id": "op002-start",
+        "confirmed_by": "human:operator",
+        "confirmed_at": "2026-09-13T00:20:00+01:00",
+        "note": "Proceed with OP-002"
+      }
+    },
+    "provider_request": {
+      "required_capability_handles": [],
+      "resources": {"cpu_millicores": 2000, "memory_mib": 4096, "wall_time_seconds": 3600},
+      "writable_paths": ["src/omnipanel/domain", "tests"],
+      "network_access": false,
+      "isolation_required": true
+    },
+    "acceptance_gates": [
+      {"gate_id": "schema-roundtrip", "gate_type": "public-test", "display_name": "Schema round-trip tests", "visibility": "candidate-visible"},
+      {"gate_id": "hidden-adversarial", "gate_type": "hidden-test", "display_name": "Hidden adversarial validation", "visibility": "master-only", "independent_context_required": true},
+      {"gate_id": "steel-review", "gate_type": "review", "display_name": "Independent Steel review", "visibility": "master-only", "independent_context_required": true}
+    ]
+  },
+  "model_identity": {
+    "schema_version": 1,
+    "record_type": "model-identity",
+    "ref": {"provider_id": "openai", "model_id": "gpt-5.6-sol"},
+    "display_name": "GPT-5.6 Sol",
+    "family": "gpt-5.6",
+    "aliases": ["Sol"]
+  },
+  "model_assessment": {
+    "schema_version": 1,
+    "record_type": "model-assessment",
+    "model": {"provider_id": "openai", "model_id": "gpt-5.6-sol"},
+    "safety_state": "active",
+    "capability_classes": ["master", "review"],
+    "tags": [
+      {"tag_id": "eye_for_details", "polarity": "positive", "rank": 1, "qualifiers": ["veteran"]},
+      {"tag_id": "promising", "polarity": "positive", "qualifiers": ["tempAvail"]},
+      {"tag_id": "poor_convergence", "polarity": "negative", "qualifiers": ["maybe"]}
+    ],
+    "maturity": 9,
+    "recent_evidence_ids": ["run-001", "run-002"]
+  },
+  "master": {
+    "schema_version": 1,
+    "record_type": "master",
+    "master_id": "master-local",
+    "driver_id": "local-model",
+    "model": {"provider_id": "openai", "model_id": "gpt-5.6-sol"}
+  },
+  "workers": [
+    {"schema_version": 1, "record_type": "worker", "worker_id": "worker-det", "kind": "deterministic", "authority_class": "trusted-deterministic"},
+    {"schema_version": 1, "record_type": "worker", "worker_id": "worker-model", "kind": "model", "authority_class": "disposable-write", "model": {"provider_id": "openai", "model_id": "gpt-5.6-sol"}}
+  ],
+  "candidate_identity": {
+    "schema_version": 1,
+    "record_type": "candidate",
+    "candidate_id": "candidate-a",
+    "task_id": "OP-101",
+    "worker_id": "worker-model"
+  },
+  "evidence": {
+    "schema_version": 1,
+    "record_type": "evidence",
+    "evidence_id": "evidence-junit-001",
+    "kind": "test-report",
+    "producer": {"producer_type": "ci", "producer_id": "github-actions"},
+    "location": "github://techrote/omnipanel/actions/runs/123/artifacts/456",
+    "created_at": "2026-09-13T00:20:00+01:00",
+    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "source_commit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "media_type": "application/xml",
+    "test_summary": {"total": 67, "passed": 64, "failed": 0, "errors": 0, "skipped": 3}
+  },
+  "component_contract": {
+    "schema_version": 1,
+    "record_type": "component-contract",
+    "ref": {"component_id": "ansible", "contract_id": "execution", "contract_version": "1.0"},
+    "repository": "techrote/ansible",
+    "source_commit": "cccccccccccccccccccccccccccccccccccccccc",
+    "qualification_evidence_ids": ["evidence-junit-001"]
+  },
+  "cancellation": {
+    "candidate_id": "candidate-b",
+    "kind": "policy",
+    "salvage_level": "minimal",
+    "salvage_evidence_ids": ["patch-001", "test-state-001"]
+  },
+  "candidate_state": {
+    "schema_version": 1,
+    "record_type": "candidate-state",
+    "candidate": {"schema_version": 1, "record_type": "candidate", "candidate_id": "candidate-b", "task_id": "OP-021", "worker_id": "worker-model"},
+    "status": "cancelled",
+    "gate_results": [{"gate_id": "public-tests", "outcome": "pass", "evidence_ids": ["evidence-junit-001"]}],
+    "evidence_ids": ["evidence-junit-001"],
+    "cancellation": {"candidate_id": "candidate-b", "kind": "policy", "salvage_level": "minimal", "salvage_evidence_ids": ["patch-001", "test-state-001"]}
+  },
+  "runs": [
+    {"schema_version": 1, "record_type": "run", "run_id": "run-single-001", "task_id": "OP-101", "master_id": "master-local", "strategy": "single", "candidate_ids": ["candidate-a"], "status": "completed", "selected_candidate_id": "candidate-a"},
+    {"schema_version": 1, "record_type": "run", "run_id": "run-race-001", "task_id": "OP-021", "master_id": "master-local", "strategy": "race", "candidate_ids": ["candidate-a", "candidate-b"], "status": "running", "race_policy": "first-valid-free"},
+    {"schema_version": 1, "record_type": "run", "run_id": "run-div-001", "task_id": "OP-022", "master_id": "master-local", "strategy": "diversity", "candidate_ids": ["candidate-a", "candidate-b"], "status": "awaiting-adjudication"}
+  ]
+}

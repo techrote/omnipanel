@@ -50,15 +50,19 @@ Canonical planning documents:
 - [Machine-readable workflow](docs/workflow.json)
 - [Stable-ID issue bindings](docs/issue-bindings.json)
 
+Implementation references:
+- [Development and startup](docs/DEVELOPMENT.md)
+- [Core schema contracts](docs/SCHEMA_CONTRACTS.md)
+
 ## Current state
 
 OP-001 / issue #10, the Python foundation, has completed implementation, automated acceptance and independent Stone review and has been merged to `main` through PR #56. The merge commit's full Windows/Linux × Python 3.12/3.13/3.14 Foundation CI also passed. A manual Windows 11 / Windows Terminal bootstrap smoke qualification subsequently passed for mouse/keyboard exit, terminal resizing, Unicode/literal path rendering and no unexpected state creation.
 
-OP-002 / issue #11 is therefore **ready** under the canonical dependency graph. It has not been started merely by this readiness transition. Later work remains governed by `docs/workflow.json`, issue contracts and the evidence/review policy.
+OP-002 / issue #11 is now **in implementation/self-verification** on draft PR #57. Its candidate defines versioned, UI-independent project/task/run/evidence/policy contracts plus synthetic round-trip/adversarial fixtures. The candidate's full Windows/Linux × Python 3.12/3.13/3.14 automated matrix passes at its tested implementation head. OP-002 remains **Steel**: independent implementation review, independent verification review and explicit user adjudication before consequential promotion/merge are still pending, so OP-002 is not complete or merged.
 
 Nine metaissues and 46 child task issues are published. Two stable tasks remain unpublished because the GitHub connector safety check refused their issue creation: OP-018 (Codex master driver) and OP-047 (remote Execution Provider implementation). They remain visible in the workflow/bindings as blocked planning records and are **not** authorized published assignments.
 
-The executable bootstrap provides typed startup settings, a read-only status command and a minimal non-executing Textual screen. No worker scheduler, VM control, model-ranking engine or production TUI is claimed yet. Active work in Ansible, Interloc or other repositories is not silently incorporated as completed Omnipanel functionality.
+The executable bootstrap provides typed startup settings, a read-only status command and a minimal non-executing Textual screen. The OP-002 candidate adds data contracts only. No durable state, readiness engine, worker scheduler, VM control, live component adapter, model-ranking service or production TUI is claimed yet. Active work in Ansible, Interloc or other repositories is not silently incorporated as completed Omnipanel functionality.
 
 ## Run the bootstrap
 
@@ -74,4 +78,4 @@ py -3.12 -m venv .venv
 Paste the complete block; the final command opens the dashboard. It cannot start jobs.
 For Linux, configuration, clean installs and exact lint/type/test/build commands, see
 [Development and startup](docs/DEVELOPMENT.md). See [OP-001 implementation evidence](docs/evidence/OP-001.md)
-and the [independent Stone review](docs/evidence/OP-001-independent-review.md) for the retained acceptance record.
+and the [independent Stone review](docs/evidence/OP-001-independent-review.md) for the retained OP-001 acceptance record.
