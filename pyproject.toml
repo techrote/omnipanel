@@ -8,7 +8,10 @@ dynamic = ["version"]
 description = "Operator control plane for the techrote agent-tooling ecosystem"
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = ["textual==8.2.8"]
+dependencies = [
+    "pydantic==2.13.5",
+    "textual==8.2.8",
+]
 classifiers = [
     "Development Status :: 2 - Pre-Alpha",
     "Environment :: Console",
