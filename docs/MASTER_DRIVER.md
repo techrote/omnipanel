@@ -12,14 +12,15 @@ A `MasterDriver` exposes three things: canonical `MasterIdentityRecord`, current
 2. bounded intake construction from the canonical `TaskRecord` plus provenance;
 3. driver proposal;
 4. fail-closed proposal normalization against task policy/provider bounds;
-5. typed adjudication request over candidate/evidence IDs;
-6. driver recommendation validation.
+5. validation that the actual unique candidate set matches the normalized candidate count;
+6. typed adjudication request over candidate/evidence IDs;
+7. driver recommendation validation against exactly that candidate/evidence set.
 
 The resulting `MasterLifecycleResult` is a normalized recommendation package. It is not commit/merge/deploy authority.
 
 ## Authority boundary
 
-The canonical task remains authoritative. A master cannot:
+The canonical task and coordinator inputs remain authoritative. A master cannot:
 
 - target a different task;
 - change the resolved `TaskPolicy.strategy`;
@@ -30,7 +31,9 @@ The canonical task remains authoritative. A master cannot:
 - weaken required isolation;
 - exceed task resource quantities;
 - relax a specific authoritative provider class;
-- adjudicate another contract or select a candidate outside the request.
+- cause a normalized candidate count to diverge from the actual adjudication candidate set;
+- adjudicate another contract or select a candidate outside the request;
+- cite evidence IDs that were not supplied to the adjudication request.
 
 A task whose policy marks consequential promotion as user-controlled remains marked `promotion_requires_user` in the adjudication request. A master selection is therefore a recommendation, not a user-promotion substitute.
 
@@ -62,6 +65,6 @@ Master proposals may include bounded local decomposition steps. Step IDs and dep
 
 ## Diagnostics
 
-`MasterLifecycleError` carries stable typed codes for unavailable masters, task mismatch, missing user policy, strategy/candidate conflicts, provider-boundary broadening, adjudication mismatch and unknown candidate selection. The operator/service layer can present these without parsing model prose.
+`MasterLifecycleError` carries stable typed codes for unavailable masters, task mismatch, missing user policy, strategy/candidate conflicts, invalid candidate sets, provider-boundary broadening, adjudication mismatch, unknown candidate selection and evidence-set mismatch. The operator/service layer can present these without parsing model prose.
 
 Automated coverage is in `tests/test_master_driver.py`.
