@@ -22,7 +22,7 @@ The mouse-driven task action strip selects durable tasks and edits a draft of th
 
 Any policy change invalidates the previous `UserPolicyDecision`. Applying a policy records a fresh explicit operator decision when OP-002 marks the resulting policy mandatory: Steel, priceless expected value, days expected wall time or paid marginal cost. Load-bearing changes preserve or raise the minimum review topology required by Stone/Steel validation.
 
-`Bulk optional defaults` deliberately skips every mandatory-decision task and reports their stable IDs. It cannot manufacture a user decision for Steel/priceless/days/paid tasks.
+`Bulk optional defaults` deliberately skips every mandatory-decision task and reports their stable IDs. The guard checks both the task's effective persisted policy and the baseline policy that the bulk action would restore, so a persisted Steel/priceless/days/paid override cannot be silently reset through the bulk path. The bulk control cannot manufacture a user decision for a mandatory policy.
 
 Policies persist through the OP-003 store via the OP-004 `ApplicationServices.save_policy()` boundary. Closing/reopening the TUI therefore does not own or erase policy state.
 
