@@ -5,6 +5,7 @@ from __future__ import annotations
 import uuid
 from collections import deque
 from enum import StrEnum
+from typing import TypeVar
 
 from pydantic import Field, ValidationError
 
@@ -28,6 +29,8 @@ from omnipanel.storage import (
     StateCorruptionError,
     StateStore,
 )
+
+TRecord = TypeVar("TRecord", bound=VersionedRecord)
 
 
 class ServiceConfigurationError(ValueError):
@@ -148,7 +151,8 @@ class ApplicationServices:
 
     def put_record(self, record: VersionedRecord) -> str:
         key = self.store.put_record(record)
-        self.updates.publish(UpdateTopic.RECORD, str(record.record_type), key)
+        record_type = getattr(record, "record_type", "record")
+        self.updates.publish(UpdateTopic.RECORD, str(record_type), key)
         return key
 
     def save_policy(self, task_id: str, policy: TaskPolicy) -> None:
@@ -177,7 +181,7 @@ class ApplicationServices:
             resources=self._resource_summary(),
         )
 
-    def _records(self, model: type[VersionedRecord], record_type: str) -> tuple:
+    def _records(self, model: type[TRecord], record_type: str) -> tuple[TRecord, ...]:
         return tuple(
             self.store.get_typed_record(model, key)
             for key in self.store.list_record_keys(record_type)
@@ -202,15 +206,15 @@ class ApplicationServices:
             try:
                 items.append(ResourceReservation.model_validate_json(str(row["payload_json"])))
             except ValidationError as exc:
-                raise StateCorruptionError("resource reservation failed service validation") from exc
+                raise StateCorruptionError(
+                    "resource reservation failed service validation"
+                ) from exc
         return tuple(items)
 
     def _resource_summary(self) -> ResourceSummary:
         reservations = self._reservations()
         live = tuple(
-            reservation
-            for reservation in reservations
-            if reservation.state is not ReservationState.RELEASED
+            item for item in reservations if item.state is not ReservationState.RELEASED
         )
         return ResourceSummary(
             total=len(reservations),
