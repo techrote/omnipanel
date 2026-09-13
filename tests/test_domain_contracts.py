@@ -4,8 +4,8 @@ import copy
 import json
 from pathlib import Path
 
-import pytest
 from pydantic import ValidationError
+import pytest
 
 from omnipanel.domain import contracts as schema
 
@@ -375,9 +375,7 @@ def test_evidence_invariants(examples: dict[str, object]) -> None:
 
 
 def test_component_contract_identity_is_structured(examples: dict[str, object]) -> None:
-    identity = schema.ComponentContractIdentityRecord.model_validate(
-        examples["component_contract"]
-    )
+    identity = schema.ComponentContractIdentityRecord.model_validate(examples["component_contract"])
     assert identity.ref.component_id == "ansible"
     assert identity.ref.contract_version == "1.0"
     assert identity.source_commit == "c" * 40
