@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import cast
+from datetime import UTC, datetime
 
 from textual.app import App, ComposeResult
 from textual.binding import Binding
@@ -231,7 +230,7 @@ class OperatorApp(App[None]):
         )
         if field not in allowed:
             return
-        updated = cycle_policy(policy, cast(PolicyField, field))
+        updated = cycle_policy(policy, field)
         self._draft_policy = updated
         self._policy_notice = "Draft changed; Apply policy persists it."
         self._show_panel("tasks")
@@ -247,12 +246,14 @@ class OperatorApp(App[None]):
             self._selected_task_id,
             policy,
             confirmed_by="human:operator",
-            confirmed_at=datetime.now(timezone.utc),
+            confirmed_at=datetime.now(UTC),
         )
         self.services.save_policy(self._selected_task_id, confirmed)
         self._draft_policy = confirmed
         self._draft_task_id = self._selected_task_id
-        self._policy_notice = "Policy persisted; mandatory choice recorded explicitly where required."
+        self._policy_notice = (
+            "Policy persisted; mandatory choice recorded explicitly where required."
+        )
         self._show_panel("tasks")
 
     def _bulk_optional_defaults(self) -> None:
