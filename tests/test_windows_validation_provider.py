@@ -6,11 +6,8 @@ from pathlib import Path
 
 import pytest
 
-from omnipanel.domain.contracts import (
-    ProviderRequest,
-    ResourceRequest,
-    TestSummary as ValidationTestSummary,
-)
+from omnipanel.domain.contracts import ProviderRequest, ResourceRequest
+from omnipanel.domain.contracts import TestSummary as ValidationTestSummary
 from omnipanel.execution_provider import (
     ExecutionProvider,
     ExecutionProviderError,
