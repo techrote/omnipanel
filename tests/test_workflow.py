@@ -60,7 +60,7 @@ def _pass(task_id: str, *, issue_closed: bool = True) -> TaskEvidence:
 def test_checked_in_manifest_and_bindings_load() -> None:
     engine = _engine()
     assert len(engine.manifest.metaissues) == 9
-    assert len(engine.manifest.tasks) == 55
+    assert len(engine.manifest.tasks) == 57
     assert engine.issue_for("OP-005") == 14
     assert engine.issue_for("OP-M001") == 1
     assert engine.issue_for("OP-049") == 76
@@ -68,6 +68,8 @@ def test_checked_in_manifest_and_bindings_load() -> None:
     assert engine.issue_for("OP-053") == 81
     assert engine.issue_for("OP-054") == 82
     assert engine.issue_for("OP-055") == 83
+    assert engine.issue_for("OP-056") == 85
+    assert engine.issue_for("OP-057") == 86
     assert engine.issue_for("OP-018") is None
     assert engine.issue_for("OP-047") is None
 

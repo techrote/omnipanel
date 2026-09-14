@@ -13,7 +13,7 @@ Plan baseline: 2026-09-15. `workflow.json` owns stable IDs/dependencies; `issue-
 | OP-M005 | #5 | Race, Diversity, acceptance/adjudication and cancellation/salvage |
 | OP-M006 | #6 | model registry, rolling assessment and safety eligibility |
 | OP-M007 | #7 | local resource scheduling and isolated worker pools |
-| OP-M008 | #8 | workflow audit, resilience, security, provider-diversity qualification, RAG/status freshness, CI-runtime maintenance, test reliability, branch hygiene, performance and v1 convergence |
+| OP-M008 | #8 | workflow audit, resilience, security, provider-diversity qualification, RAG/status freshness, CI/runtime and protected-main promotion, explicit readiness authority, test reliability, branch hygiene, performance and v1 convergence |
 | OP-M009 | #9 | deferred web/remote/volatile-storage extensions |
 
 ## Delivery sequence
@@ -52,7 +52,9 @@ OP-051/#78 is a focused reliability task for the observed Textual programme-poli
 
 OP-053/#81 removes obsolete live-status prose from universal RAG surfaces and establishes explicit freshness/status-source semantics. OP-054/#82 follows OP-010 and OP-049 so the resource dashboard cannot inherit qualification by provider ID alone and instead consumes exact provider identity/interface/evidence semantics. OP-055/#83 migrates Foundation CI away from the deprecated Node-20 action runtime while retaining immutable SHA pins and artifact evidence.
 
-OP-040/#48 restart, OP-041/#49 independent security and OP-042/#50 performance can proceed after their respective MVP prerequisites. OP-043/#51 remains the final v1 whole-system convergence audit and explicitly waits for OP-050/#77 through OP-055/#83 where those tasks are non-deferred prerequisites.
+OP-056/#85 moves consequential promotion enforcement into the GitHub control plane: `main` must be protected against routine direct mutation, force-push/deletion and non-green promotion without turning the single-account/agent-review model into a deadlock. It also audits CI concurrency so canonical post-merge evidence is not silently cancelled by rapid successive merges. OP-057/#86 hardens readiness itself: negative terminal task dispositions require explicit task-contract permission, and external gates require typed provenance/evidence rather than caller-supplied display strings.
+
+OP-040/#48 restart, OP-041/#49 independent security and OP-042/#50 performance can proceed after their respective MVP prerequisites. OP-043/#51 remains the final v1 whole-system convergence audit and explicitly waits for OP-050/#77 through OP-057/#86 where those tasks are non-deferred prerequisites.
 
 ### Stage E — deferred extensions
 
@@ -70,6 +72,8 @@ OP-048/#55 may implement RAMDisk/tmpfs acceleration only after measurements just
 - Resource/provider UI qualification projections must bind to exact provider identity/version/interface evidence; provider ID alone is not sufficient qualification provenance.
 - Universal RAG/current-status prose must either derive from one explicit status source or carry unmistakable point-in-time semantics; duplicated hand-maintained task state is not authoritative.
 - Third-party CI actions remain immutable-SHA pinned and must use GitHub-supported action runtimes; evidence retention is part of the verification contract.
+- Canonical `main` promotion is expected to use the reviewed PR/check path. Until OP-056 live protection is verified, the absence of hosting-layer enforcement is an explicit blocker rather than permission to normalize direct pushes.
+- A negative task disposition or external-integration assertion must not release downstream work merely because a caller supplies a note/string; OP-057 makes that authority machine-readable and fail-closed.
 - Branch cleanup must preserve default/protected refs, open-PR heads and any unique/unmerged history; names alone are never deletion evidence.
 - Deferred metaissue OP-M009 is not part of v1 readiness.
 
@@ -81,12 +85,12 @@ When a target project is imported/planned, Omnipanel should allow bulk defaults/
 - `expected_wall_time = days`
 - `marginal_cost = paid`
 
-Per-task Race/Diversity/cancellation/review overrides are expected and survive as durable policy evidence.
+Per-task Race/Diversity/cancellation/review overrides are expected and survive as durable policy evidence. OP-041 independently verifies that a prior decision cannot be replayed onto a materially changed consequential policy snapshot.
 
 ## Publication blockers
 
-See `issue-bindings.json` for exact records. OP-018 and OP-047 have no GitHub issue because the connector safety check refused their publication. Their stable workflow records remain planning context, not executable/published assignments.
+See `issue-bindings.json` for exact records. OP-018 and OP-047 have no GitHub issue because the connector safety check refused their publication. Their stable workflow records remain planning context, not executable/published assignments. OP-057 must make any permitted negative/deferred reconciliation path for such dependencies explicit in the task contract rather than relying on globally terminal `DEFERRED` semantics.
 
 ## Definition of programme completion
 
-Metaissues close only after child evidence is reconciled. V1 is not complete from green unit tests alone: OP-M008/#8 requires end-to-end, restart, security, resource/performance, provider-diversity and compatibility review, with unavailable live integrations explicitly distinguished from synthetic coverage. Provider qualification presentation must preserve exact provenance; universal RAG/current-status surfaces must not contradict merged evidence; CI action runtimes must be supported with retained evidence verified; known CI flakes and branch-lifecycle hazards must be classified and reconciled rather than normalized by reruns or ad-hoc cleanup.
+Metaissues close only after child evidence is reconciled. V1 is not complete from green unit tests alone: OP-M008/#8 requires end-to-end, restart, security, resource/performance, provider-diversity and compatibility review, with unavailable live integrations explicitly distinguished from synthetic coverage. Provider qualification presentation must preserve exact provenance; universal RAG/current-status surfaces must not contradict merged evidence; CI action runtimes must be supported with retained evidence verified; canonical promotion controls must be live and verified; task-completion/external-gate readiness authority must be explicit and provenance-bearing; known CI flakes and branch-lifecycle hazards must be classified and reconciled rather than normalized by reruns or ad-hoc cleanup.
