@@ -20,6 +20,12 @@ from omnipanel.programme import (
     effective_policy,
     render_programme,
 )
+from omnipanel.run_views import (
+    RunObservation,
+    render_run_detail,
+    selected_candidate_id,
+    selected_run_id,
+)
 from omnipanel.services import ApplicationServices, ApplicationSnapshot
 from omnipanel.storage import StateError
 from omnipanel.workflow import TaskEvidence, WorkflowEngine
@@ -47,6 +53,8 @@ class OperatorApp(App[None]):
     #navigation Button { min-width: 12; margin-right: 1; }
     #task-actions { height: 3; padding: 0 1; display: none; }
     #task-actions Button { min-width: 12; margin-right: 1; }
+    #run-actions { height: 3; padding: 0 1; display: none; }
+    #run-actions Button { min-width: 14; margin-right: 1; }
     #operator-content { height: 1fr; padding: 1 2; }
     #panel-title { text-style: bold; margin-bottom: 1; }
     #panel-body { width: 100%; height: auto; }
@@ -68,12 +76,14 @@ class OperatorApp(App[None]):
         *,
         workflow: WorkflowEngine | None = None,
         task_evidence: tuple[TaskEvidence, ...] = (),
+        run_observations: tuple[RunObservation, ...] = (),
     ) -> None:
         super().__init__()
         self.config = config
         self.services = services
         self.workflow = workflow
         self.task_evidence = task_evidence
+        self.run_observations = run_observations
         self._panel = "overview"
         self._status = (
             "BLOCKER: execution disabled until a qualified provider and policy permit it."
@@ -82,6 +92,8 @@ class OperatorApp(App[None]):
         self._draft_policy: TaskPolicy | None = None
         self._draft_task_id: str | None = None
         self._policy_notice: str | None = None
+        self._selected_run_id: str | None = None
+        self._selected_candidate_id: str | None = None
 
     def compose(self) -> ComposeResult:
         yield Header()
@@ -104,6 +116,11 @@ class OperatorApp(App[None]):
             yield Button("Cost", id="policy-marginal-cost")
             yield Button("Apply policy", id="policy-apply")
             yield Button("Bulk optional defaults", id="policy-bulk-defaults")
+        with HorizontalScroll(id="run-actions"):
+            yield Button("Prev run", id="run-prev")
+            yield Button("Next run", id="run-next")
+            yield Button("Prev candidate", id="candidate-prev")
+            yield Button("Next candidate", id="candidate-next")
         with VerticalScroll(id="operator-content"):
             yield Static("Overview", id="panel-title", markup=False)
             yield Static("Loading durable state…", id="panel-body", markup=False)
@@ -136,6 +153,18 @@ class OperatorApp(App[None]):
             return
         if button_id == "task-next":
             self._move_task(1)
+            return
+        if button_id == "run-prev":
+            self._move_run(-1)
+            return
+        if button_id == "run-next":
+            self._move_run(1)
+            return
+        if button_id == "candidate-prev":
+            self._move_candidate(-1)
+            return
+        if button_id == "candidate-next":
+            self._move_candidate(1)
             return
         if button_id.startswith("policy-"):
             action = button_id.removeprefix("policy-")
@@ -183,12 +212,15 @@ class OperatorApp(App[None]):
             return
         self._panel = panel
         self.query_one("#task-actions", HorizontalScroll).display = panel == "tasks"
+        self.query_one("#run-actions", HorizontalScroll).display = panel == "runs"
         self.query_one("#panel-title", Static).update(self._PANEL_LABELS[panel])
         snapshot = self._snapshot()
         if snapshot is None:
             return
         if panel == "tasks":
             self._ensure_selected_task(snapshot)
+        elif panel == "runs":
+            self._ensure_selected_run(snapshot)
         self.query_one("#panel-body", Static).update(self._render_panel(panel, snapshot))
 
     def _ensure_selected_task(self, snapshot: ApplicationSnapshot) -> None:
@@ -260,6 +292,39 @@ class OperatorApp(App[None]):
         index = task_ids.index(self._selected_task_id)
         self._select_task(task_ids[(index + delta) % len(task_ids)])
 
+    def _ensure_selected_run(self, snapshot: ApplicationSnapshot) -> None:
+        self._selected_run_id = selected_run_id(snapshot, self._selected_run_id)
+        self._selected_candidate_id = selected_candidate_id(
+            snapshot,
+            self._selected_run_id,
+            self._selected_candidate_id,
+        )
+
+    def _move_run(self, delta: int) -> None:
+        snapshot = self._snapshot()
+        if snapshot is None or not snapshot.runs:
+            return
+        self._ensure_selected_run(snapshot)
+        run_ids = tuple(run.run_id for run in snapshot.runs)
+        assert self._selected_run_id is not None
+        index = run_ids.index(self._selected_run_id)
+        self._selected_run_id = run_ids[(index + delta) % len(run_ids)]
+        self._selected_candidate_id = None
+        self._ensure_selected_run(snapshot)
+        self._show_panel("runs")
+
+    def _move_candidate(self, delta: int) -> None:
+        snapshot = self._snapshot()
+        if snapshot is None or not snapshot.runs:
+            return
+        self._ensure_selected_run(snapshot)
+        if self._selected_run_id is None or self._selected_candidate_id is None:
+            return
+        run = next(item for item in snapshot.runs if item.run_id == self._selected_run_id)
+        index = run.candidate_ids.index(self._selected_candidate_id)
+        self._selected_candidate_id = run.candidate_ids[(index + delta) % len(run.candidate_ids)]
+        self._show_panel("runs")
+
     def _selected_policy(self, snapshot: ApplicationSnapshot) -> TaskPolicy | None:
         self._ensure_selected_task(snapshot)
         if self._selected_task_id is None:
@@ -289,8 +354,7 @@ class OperatorApp(App[None]):
         )
         if field not in allowed:
             return
-        updated = cycle_policy(policy, field)
-        self._draft_policy = updated
+        self._draft_policy = cycle_policy(policy, field)
         self._policy_notice = "Draft changed; Apply policy persists it."
         self._show_panel("tasks")
 
@@ -364,10 +428,11 @@ class OperatorApp(App[None]):
                 f"{body}"
             )
         if panel == "runs":
-            if not snapshot.runs:
-                return "No durable runs."
-            return "\n".join(
-                f"{run.run_id}  {run.status.value}  task={run.task_id}" for run in snapshot.runs
+            return render_run_detail(
+                snapshot,
+                run_id=self._selected_run_id,
+                candidate_id=self._selected_candidate_id,
+                observations=self.run_observations,
             )
         if panel == "evidence":
             if not snapshot.evidence:

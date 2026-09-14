@@ -57,6 +57,7 @@ async def test_policy_editor_persists_explicit_mandatory_choice(tmp_path: Path) 
             assert "value=priceless" in _plain(app, "#panel-body")
             assert "USER DECISION REQUIRED" in _plain(app, "#panel-body")
             assert await pilot.click("#policy-apply")
+            await pilot.pause()
             saved = services.snapshot().policies
             assert len(saved) == 1
             assert saved[0].policy.economics.expected_value is ExpectedValue.PRICELESS
