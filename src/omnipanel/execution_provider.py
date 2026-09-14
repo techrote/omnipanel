@@ -259,6 +259,8 @@ class ExecutionProvider(Protocol):
 
     def reserve(self, *, run_id: str, request: ProviderRequest) -> ProviderReservation: ...
 
+    def reservation(self, reservation_id: str) -> ProviderReservation: ...
+
     def start(self, request: ProviderCandidateRequest) -> ProviderCandidateHandle: ...
 
     def observe(self, handle: ProviderCandidateHandle) -> ProviderCandidateObservation: ...
@@ -294,8 +296,8 @@ class FakeExecutionProvider:
     """Deterministic in-memory provider for lifecycle/resource/error tests.
 
     ``finish`` is a test control surface, not part of ``ExecutionProvider``. It lets tests
-    deterministically advance a provider job to a terminal execution lifecycle without
-    granting Omnipanel candidate eligibility or acceptance.
+    deterministically advance a provider job to a terminal or indeterminate execution
+    lifecycle without granting Omnipanel candidate eligibility or acceptance.
     """
 
     def __init__(
@@ -361,6 +363,16 @@ class FakeExecutionProvider:
         self._reservations[reservation_id] = reservation
         return reservation
 
+    def reservation(self, reservation_id: str) -> ProviderReservation:
+        reservation = self._reservations.get(reservation_id)
+        if reservation is None:
+            self._raise(
+                ProviderFailureCode.RESERVATION_NOT_FOUND,
+                "provider reservation does not exist",
+                reservation_id=reservation_id,
+            )
+        return reservation
+
     def start(self, request: ProviderCandidateRequest) -> ProviderCandidateHandle:
         self._require_available()
         if request.purpose not in self._description.supported_purposes:
@@ -370,14 +382,7 @@ class FakeExecutionProvider:
                 reservation_id=request.reservation_id,
                 candidate_id=request.candidate_id,
             )
-        reservation = self._reservations.get(request.reservation_id)
-        if reservation is None:
-            self._raise(
-                ProviderFailureCode.RESERVATION_NOT_FOUND,
-                "provider reservation does not exist",
-                reservation_id=request.reservation_id,
-                candidate_id=request.candidate_id,
-            )
+        reservation = self.reservation(request.reservation_id)
         if reservation.state is not ProviderReservationState.RESERVED:
             self._raise(
                 ProviderFailureCode.RESERVATION_STATE_INVALID,
@@ -436,10 +441,10 @@ class FakeExecutionProvider:
         if not reason.strip():
             raise ValueError("cancel reason must not be empty")
         current = self.observe(handle)
-        if _terminal_lifecycle(current.lifecycle):
+        if _settled_lifecycle(current.lifecycle):
             self._raise(
                 ProviderFailureCode.CANDIDATE_STATE_INVALID,
-                "terminal provider candidate cannot be cancelled again",
+                "settled provider candidate cannot be cancelled again",
                 reservation_id=handle.reservation_id,
                 candidate_id=handle.candidate_id,
             )
@@ -459,10 +464,10 @@ class FakeExecutionProvider:
         }:
             raise ValueError("finish requires succeeded, failed or indeterminate lifecycle")
         current = self.observe(handle)
-        if _terminal_lifecycle(current.lifecycle):
+        if _settled_lifecycle(current.lifecycle):
             self._raise(
                 ProviderFailureCode.CANDIDATE_STATE_INVALID,
-                "terminal provider candidate cannot transition again",
+                "settled provider candidate cannot transition again",
                 reservation_id=handle.reservation_id,
                 candidate_id=handle.candidate_id,
             )
@@ -475,20 +480,14 @@ class FakeExecutionProvider:
         return self._evidence.get(handle.provider_job_id, ())
 
     def release(self, reservation_id: str) -> ProviderReservation:
-        reservation = self._reservations.get(reservation_id)
-        if reservation is None:
-            self._raise(
-                ProviderFailureCode.RESERVATION_NOT_FOUND,
-                "provider reservation does not exist",
-                reservation_id=reservation_id,
-            )
+        reservation = self.reservation(reservation_id)
         if reservation.state is ProviderReservationState.RELEASED:
             return reservation
         job_id = self._reservation_jobs.get(reservation_id)
-        if job_id is not None and not _terminal_lifecycle(self._observations[job_id].lifecycle):
+        if job_id is not None and not _settled_lifecycle(self._observations[job_id].lifecycle):
             self._raise(
                 ProviderFailureCode.RESERVATION_STATE_INVALID,
-                "active provider reservation cannot be released before candidate termination",
+                "unsettled provider reservation cannot be released",
                 reservation_id=reservation_id,
                 candidate_id=self._handles[job_id].candidate_id,
             )
@@ -606,16 +605,27 @@ class FakeExecutionProvider:
             candidate_id=handle.candidate_id,
             descriptor=descriptor,
         )
-        self._evidence[handle.provider_job_id] = (receipt,)
+        receipts = (*self._evidence.get(handle.provider_job_id, ()), receipt)
+        self._evidence[handle.provider_job_id] = receipts
         current = self._observations[handle.provider_job_id]
+        evidence_ids = tuple(item.descriptor.evidence_id for item in receipts)
         observation = ProviderCandidateObservation(
             handle=handle,
             sequence=current.sequence + 1,
             lifecycle=lifecycle,
             observed_at=timestamp,
-            evidence_ids=(evidence_id,),
+            evidence_ids=evidence_ids,
         )
         self._observations[handle.provider_job_id] = observation
+        reservation = self.reservation(handle.reservation_id)
+        reservation_state = (
+            ProviderReservationState.INDETERMINATE
+            if lifecycle is ProviderCandidateLifecycle.INDETERMINATE
+            else ProviderReservationState.ACTIVE
+        )
+        self._reservations[handle.reservation_id] = reservation.model_copy(
+            update={"state": reservation_state, "updated_at": timestamp}
+        )
         if detail.strip():
             # The fake keeps the result detail out of durable/evidence contracts; the
             # deterministic evidence location and receipt carry the provider provenance.
@@ -629,6 +639,7 @@ class FakeExecutionProvider:
             if reservation.state in {
                 ProviderReservationState.RESERVED,
                 ProviderReservationState.ACTIVE,
+                ProviderReservationState.INDETERMINATE,
             }
         )
         return _subtract_resources(self._total, active)
@@ -686,24 +697,31 @@ def _resource_request_fits(request: ResourceRequest, available: ResourceRequest)
     )
 
 
-def _subtract_resources(total: ResourceRequest, reservations: tuple[ResourceRequest, ...]) -> ResourceRequest:
+def _subtract_resources(
+    total: ResourceRequest, reservations: tuple[ResourceRequest, ...]
+) -> ResourceRequest:
     """Subtract fungible capacity; wall time remains a per-job maximum ceiling."""
 
     return ResourceRequest(
-        cpu_millicores=max(0, total.cpu_millicores - sum(item.cpu_millicores for item in reservations)),
+        cpu_millicores=max(
+            0,
+            total.cpu_millicores - sum(item.cpu_millicores for item in reservations),
+        ),
         memory_mib=max(0, total.memory_mib - sum(item.memory_mib for item in reservations)),
-        storage_mib=max(0, total.storage_mib - sum(item.storage_mib for item in reservations)),
+        storage_mib=max(
+            0,
+            total.storage_mib - sum(item.storage_mib for item in reservations),
+        ),
         wall_time_seconds=total.wall_time_seconds,
         gpu_count=max(0, total.gpu_count - sum(item.gpu_count for item in reservations)),
     )
 
 
-def _terminal_lifecycle(lifecycle: ProviderCandidateLifecycle) -> bool:
+def _settled_lifecycle(lifecycle: ProviderCandidateLifecycle) -> bool:
     return lifecycle in {
         ProviderCandidateLifecycle.SUCCEEDED,
         ProviderCandidateLifecycle.FAILED,
         ProviderCandidateLifecycle.CANCELLED,
-        ProviderCandidateLifecycle.INDETERMINATE,
     }
 
 
