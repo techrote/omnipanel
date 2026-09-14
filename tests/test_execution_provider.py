@@ -172,6 +172,7 @@ def test_fake_satisfies_generic_provider_shape_and_happy_lifecycle() -> None:
     assert len(receipts) == 1
     receipt = receipts[0]
     assert receipt.provider == provider.describe().identity
+    assert receipt.task_id == "OP-014"
     assert receipt.descriptor.producer.producer_type is EvidenceProducerType.PROVIDER
     assert receipt.descriptor.producer.producer_id == "provider-fake"
     assert "/fake-1.0/" in receipt.descriptor.location
@@ -453,12 +454,13 @@ def test_provider_evidence_receipt_validates_producer_identity() -> None:
             provider=identity,
             provider_job_id="job-1",
             run_id="run-014",
+            task_id="OP-014",
             candidate_id="candidate-a",
             descriptor=descriptor,
         )
 
 
-def test_attach_provider_evidence_rejects_cross_run_and_cross_candidate_receipts() -> None:
+def test_attach_provider_evidence_rejects_cross_run_task_and_candidate_receipts() -> None:
     provider = _provider()
     _, handle = _start(provider)
     provider.finish(handle, ProviderCandidateLifecycle.SUCCEEDED)
@@ -474,6 +476,8 @@ def test_attach_provider_evidence_rejects_cross_run_and_cross_candidate_receipts
 
     with pytest.raises(ValueError, match="different run"):
         attach_provider_evidence(run, (receipt.model_copy(update={"run_id": "run-other"}),))
+    with pytest.raises(ValueError, match="different task"):
+        attach_provider_evidence(run, (receipt.model_copy(update={"task_id": "OP-999"}),))
     with pytest.raises(ValueError, match="outside the run"):
         attach_provider_evidence(
             run,
