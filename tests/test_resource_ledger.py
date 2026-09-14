@@ -27,7 +27,7 @@ from omnipanel.resource_ledger import (
     ResourceLedgerError,
 )
 from omnipanel.services import ApplicationServices
-from omnipanel.storage import ReservationState, StateStore
+from omnipanel.storage import ReservationState, ResourceReservation, StateStore
 
 CLOCK = datetime(2026, 9, 14, 7, 0, tzinfo=UTC)
 TOTAL = ResourceRequest(
@@ -130,6 +130,8 @@ def test_candidate_reservation_round_trip_and_release_use_one_durable_source(
         assert view.state is ReservationState.RESERVED
         assert view.provider == provider.describe().identity
         assert view.provider_request == request
+        assert view.provider_reservation_id == "reservation-0001"
+        assert view.reservation_id != view.provider_reservation_id
 
         snapshot = services.snapshot()
         assert snapshot.resource_reservations == services.resource_reservations()
@@ -199,13 +201,15 @@ def test_restart_marks_active_reservation_indeterminate_then_provider_reconciles
             request=_request(),
         )
         reservation_id = reserved.reservation_id
+        provider_reservation_id = reserved.provider_reservation_id
+        assert provider_reservation_id is not None
         provider.start(
             ProviderCandidateRequest(
                 run_id="run-restart",
                 candidate_id="candidate-restart",
                 task_id="OP-032",
                 purpose=ProviderWorkPurpose.EXECUTION,
-                reservation_id=reservation_id,
+                reservation_id=provider_reservation_id,
                 payload_ref="payload-restart",
             )
         )
@@ -214,6 +218,7 @@ def test_restart_marks_active_reservation_indeterminate_then_provider_reconciles
             reservation_id=reservation_id,
         )
         assert reconciled.durable_state is ReservationState.ACTIVE
+        assert reconciled.provider_reservation_id == provider_reservation_id
 
     with StateStore(config) as reopened:
         services = ApplicationServices(reopened)
@@ -321,6 +326,58 @@ def test_provider_version_change_makes_accounting_indeterminate(tmp_path: Path) 
         }
 
 
+def test_release_refuses_reused_provider_id_with_different_identity(tmp_path: Path) -> None:
+    original = _provider(description=_description(version="1.0"))
+    with StateStore(_config(tmp_path)) as store:
+        services = ApplicationServices(store)
+        first = DurableResourceLedger(services, {"provider-a": original})
+        durable_id = first.reserve_candidate(
+            provider_id="provider-a",
+            run_id="run-release-version",
+            candidate_id="candidate-release-version",
+            request=_request(),
+        ).reservation_id
+
+        replacement = _provider(description=_description(version="2.0"))
+        second = DurableResourceLedger(services, {"provider-a": replacement})
+        with pytest.raises(ResourceLedgerError, match="identity/version"):
+            second.release(provider_id="provider-a", reservation_id=durable_id)
+        assert store.load_reservation(durable_id).state is ReservationState.RESERVED
+
+
+def test_provider_local_reservation_id_collisions_do_not_overwrite_durable_history(
+    tmp_path: Path,
+) -> None:
+    provider_a = _provider(description=_description(provider_id="provider-a"))
+    provider_b = _provider(description=_description(provider_id="provider-b"))
+    with StateStore(_config(tmp_path)) as store:
+        services = ApplicationServices(store)
+        ledger = DurableResourceLedger(
+            services,
+            {"provider-a": provider_a, "provider-b": provider_b},
+        )
+        left = ledger.reserve_candidate(
+            provider_id="provider-a",
+            run_id="run-left",
+            candidate_id="candidate-left",
+            request=_request(),
+        )
+        right = ledger.reserve_candidate(
+            provider_id="provider-b",
+            run_id="run-right",
+            candidate_id="candidate-right",
+            request=_request(),
+        )
+        assert left.provider_reservation_id == "reservation-0001"
+        assert right.provider_reservation_id == "reservation-0001"
+        assert left.reservation_id != right.reservation_id
+        assert len(services.resource_reservations()) == 2
+        assert {item.provider_id for item in services.resource_reservations()} == {
+            "provider-a",
+            "provider-b",
+        }
+
+
 def test_external_release_requires_indeterminate_state(tmp_path: Path) -> None:
     provider = _provider()
     with StateStore(_config(tmp_path)) as store:
@@ -339,6 +396,32 @@ def test_external_release_requires_indeterminate_state(tmp_path: Path) -> None:
                 reason="should not bypass live reservation state",
                 confirmed_at=CLOCK,
             )
+
+
+def test_explicit_release_can_recover_indeterminate_reservation_with_missing_binding(
+    tmp_path: Path,
+) -> None:
+    with StateStore(_config(tmp_path)) as store:
+        services = ApplicationServices(store)
+        orphan = ResourceReservation(
+            reservation_id="resource-orphan",
+            run_id="run-orphan",
+            provider_id="provider-a",
+            request=_request().resources,
+            state=ReservationState.INDETERMINATE,
+            updated_at=CLOCK,
+        )
+        services.save_reservation(orphan)
+        ledger = DurableResourceLedger(services, {"provider-a": _provider()})
+        result = ledger.confirm_external_release(
+            reservation_id=orphan.reservation_id,
+            confirmed_by="human:operator",
+            reason="half-write inspected out of band; provider has no live reservation",
+            confirmed_at=CLOCK,
+        )
+        assert result.status is ReconciliationStatus.EXTERNAL_RELEASE_CONFIRMED
+        assert result.provider_reservation_id is None
+        assert store.load_reservation(orphan.reservation_id).state is ReservationState.RELEASED
 
 
 def test_provider_snapshot_is_deterministic_across_multiple_providers(tmp_path: Path) -> None:
