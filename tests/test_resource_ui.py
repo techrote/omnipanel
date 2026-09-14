@@ -45,7 +45,7 @@ def _task() -> TaskRecord:
     task = TaskRecord.model_validate(_json(OP002)["task"])
     return task.model_copy(
         update={
-            "task_id": "OP-010-UI",
+            "task_id": "OP-010",
             "display_name": "Resource UI fixture",
             "provider_request": ProviderRequest(
                 provider_class="general-worker",
