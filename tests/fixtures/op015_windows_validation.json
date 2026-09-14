@@ -1,0 +1,29 @@
+{
+  "synthetic": {
+    "provider_id": "provider-win-validation-synthetic",
+    "implementation_version": "synthetic-1.0",
+    "platform": {
+      "platform_id": "windows-validation-x64",
+      "os_family": "windows",
+      "os_version": "Windows synthetic fixture",
+      "architecture": "x86_64",
+      "image_id": "win-fixture-image-v1",
+      "harness_id": "validation-harness-v1"
+    },
+    "capabilities": [
+      "test.pytest",
+      "test.windows-paths"
+    ],
+    "total": {
+      "cpu_millicores": 4000,
+      "memory_mib": 8192,
+      "storage_mib": 32768,
+      "wall_time_seconds": 900,
+      "gpu_count": 0
+    }
+  },
+  "live_gate": {
+    "state": "not-run",
+    "reason": "No qualified live Windows validation provider is configured for OP-015."
+  }
+}
