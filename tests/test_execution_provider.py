@@ -372,6 +372,29 @@ def test_release_rejects_live_job_and_cancel_makes_it_releasable() -> None:
     assert _failure_code(repeat_exc) is ProviderFailureCode.CANDIDATE_STATE_INVALID
 
 
+def test_indeterminate_job_holds_resources_until_reconciled() -> None:
+    provider = _provider()
+    reservation, handle = _start(provider)
+    indeterminate = provider.finish(handle, ProviderCandidateLifecycle.INDETERMINATE)
+    assert indeterminate.lifecycle is ProviderCandidateLifecycle.INDETERMINATE
+    assert provider.reservation(reservation.reservation_id).state is ProviderReservationState.INDETERMINATE
+    held = provider.inventory().available
+    assert held.cpu_millicores == 2500
+    assert held.memory_mib == 6144
+
+    with pytest.raises(ExecutionProviderError) as release_exc:
+        provider.release(reservation.reservation_id)
+    assert _failure_code(release_exc) is ProviderFailureCode.RESERVATION_STATE_INVALID
+
+    reconciled = provider.finish(handle, ProviderCandidateLifecycle.SUCCEEDED)
+    assert reconciled.lifecycle is ProviderCandidateLifecycle.SUCCEEDED
+    assert len(reconciled.evidence_ids) == 2
+    assert len(provider.collect_evidence(handle)) == 2
+    assert provider.reservation(reservation.reservation_id).state is ProviderReservationState.ACTIVE
+    assert provider.release(reservation.reservation_id).state is ProviderReservationState.RELEASED
+    assert provider.inventory().available == TOTAL
+
+
 def test_request_and_handle_identity_mismatches_fail_closed() -> None:
     provider = _provider()
     reservation = provider.reserve(run_id="run-014", request=_request())
