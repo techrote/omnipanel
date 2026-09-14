@@ -273,7 +273,10 @@ def test_missing_provider_reservation_stays_indeterminate_until_explicit_release
 
 def test_provider_reporting_less_free_capacity_is_surfaced_not_hidden(tmp_path: Path) -> None:
     provider = _provider()
-    provider.reserve(run_id="external-run", request=_request(cpu=750, memory=512, storage=1024))
+    provider.reserve(
+        run_id="external-run",
+        request=_request(cpu=750, memory=512, storage=1024),
+    )
     with StateStore(_config(tmp_path)) as store:
         ledger = DurableResourceLedger(
             ApplicationServices(store),
