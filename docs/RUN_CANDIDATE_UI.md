@@ -18,9 +18,9 @@ The current durable schema does **not** contain an authoritative candidate-to-ex
 
 For a non-terminal durable run without a matching live observation, the panel displays `[INDETERMINATE]`; worker silence is not treated as success or failure. A supplied observation may explicitly mark the view `LIVE`, `STALE`, `DISCONNECTED` or `INDETERMINATE`.
 
-For a terminal durable run without live context, the panel displays `[HISTORICAL]`. That label only means the durable run has a terminal status. Acceptance is still represented separately through run selection, candidate/gate state and evidence.
+For a terminal durable run without live context, the panel displays `[HISTORICAL]`. That label only means the durable run has a terminal status. Acceptance is still represented separately through run selection, matching candidate state, gate state and evidence.
 
-Elapsed and last-event fields are shown only when their source timestamps exist. Missing timing is `unknown` rather than synthesized.
+Elapsed and last-event fields are shown only when their source timestamps exist. Impossible live timestamps are rejected rather than normalized into plausible-looking timing.
 
 ## Provisional and accepted selection
 
@@ -28,13 +28,13 @@ Elapsed and last-event fields are shown only when their source timestamps exist.
 
 `selection=provisional:<candidate-id> NOT-ACCEPTED`
 
-On a completed run it is displayed as `selection=accepted:<candidate-id>`. This is especially important for Race, where an early eligible result may be a provisional winner while sibling work, policy or review/adjudication remains outstanding.
+A completed run is rendered as accepted only when the selected durable candidate record exists, belongs to the same task and is `eligible`. Missing, mismatched or non-eligible candidate state produces `ACCEPTANCE-INDETERMINATE` instead. This is especially important for Race, where an early eligible result may be a provisional winner while sibling work, policy or review/adjudication remains outstanding.
 
 Diversity uses the same durable candidate comparison view without introducing Race-style early-cancel semantics.
 
 ## Candidate comparison and evidence drill-down
 
-The candidate list uses stable candidate and worker IDs. When live observations provide model identity, the display uses the canonical `<provider-id>/<model-id>` pair, not a human display name.
+The candidate list uses stable candidate and worker IDs. When live observations provide model identity, the display uses the canonical `<provider-id>/<model-id>` pair, not a human display name. A candidate record whose task identity does not match the run fails closed as an indeterminate task mismatch.
 
 Selecting a candidate exposes:
 
@@ -45,7 +45,7 @@ Selecting a candidate exposes:
 - evidence kind, location and test summary where a durable descriptor exists;
 - missing evidence descriptors explicitly as `MISSING DESCRIPTOR`.
 
-The run header also displays the task's durable self-check, implementation-review, verification-review and user-promotion requirements. The UI reports those requirements; it does not satisfy them.
+The run header displays the task's effective durable self-check, implementation-review, verification-review and user-promotion requirements, including a persisted OP-008 task-policy override where one exists. The UI reports those requirements; it does not satisfy them.
 
 ## Navigation and reconnect behavior
 
@@ -64,7 +64,8 @@ Closing the TUI does not stop a run. Reopening the application reconstructs dura
 | Pass/eligible | candidate eligible + PASS gate | optional | recorded PASS plus evidence only |
 | Fail/reject | candidate rejected/failed | optional | durable failure/rejection, never hidden by terminality |
 | Cancel | candidate cancelled/contained | optional | cancellation and salvage detail |
-| Historical completion | completed | absent | historical marker and accepted selection if recorded |
+| Historical completion | completed + matching eligible selected candidate | absent | historical marker and accepted selection |
+| Inconsistent completion | completed + missing/mismatched/non-eligible selected candidate | optional | `ACCEPTANCE-INDETERMINATE` |
 | Race provisional | running/awaiting adjudication + selected candidate | any | `provisional ... NOT-ACCEPTED` |
 
-`tests/test_run_views.py` covers projection invariants and `tests/test_run_ui.py` covers Textual mouse navigation plus durable close/reopen reconstruction.
+`tests/test_run_views.py`, `tests/test_run_view_matrix.py` and `tests/test_run_review_regressions.py` cover projection invariants and the fixture matrix. `tests/test_run_ui.py` covers Textual mouse navigation plus durable close/reopen reconstruction.
