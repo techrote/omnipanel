@@ -1,6 +1,6 @@
 # Omnipanel roadmap and dependency atlas
 
-Plan baseline: 2026-09-12. `workflow.json` owns stable IDs/dependencies; `issue-bindings.json` binds published GitHub numbers. Issue closure is not evidence completion.
+Plan baseline: 2026-09-14. `workflow.json` owns stable IDs/dependencies; `issue-bindings.json` binds published GitHub numbers. Issue closure is not evidence completion.
 
 ## Programme envelopes
 
@@ -8,12 +8,12 @@ Plan baseline: 2026-09-12. `workflow.json` owns stable IDs/dependencies; `issue-
 |---|---:|---|
 | OP-M001 | #1 | foundation, schemas, durable state, app services, DAG/readiness, interface registry |
 | OP-M002 | #2 | mouse-driven Textual operator application |
-| OP-M003 | #3 | component adapters and Execution Provider boundary |
+| OP-M003 | #3 | component adapters, Execution Provider boundary and explicit provider qualification semantics |
 | OP-M004 | #4 | master drivers and proposal channels |
 | OP-M005 | #5 | Race, Diversity, acceptance/adjudication and cancellation/salvage |
 | OP-M006 | #6 | model registry, rolling assessment and safety eligibility |
 | OP-M007 | #7 | local resource scheduling and isolated worker pools |
-| OP-M008 | #8 | workflow audit, resilience, security, performance and v1 convergence |
+| OP-M008 | #8 | workflow audit, resilience, security, provider-diversity qualification, test reliability, branch hygiene, performance and v1 convergence |
 | OP-M009 | #9 | deferred web/remote/volatile-storage extensions |
 
 ## Delivery sequence
@@ -46,7 +46,11 @@ OP-032/#40 resource reservations -> OP-033/#41 pool lifecycle. OP-034/#42 live H
 
 OP-036/#44 is design-only volatile scratch planning; no RAMDisk implementation is on the v1 critical path.
 
-OP-040/#48 restart, OP-041/#49 independent security and OP-042/#50 performance can proceed after their respective MVP prerequisites. OP-043/#51 is the final v1 whole-system convergence audit.
+OP-049/#76 defines explicit cross-provider qualification/evidence semantics after the generic provider and Windows validation adapter exist. It does not replace OP-013/#22 live Ansible qualification or OP-034/#42 Hyper-V/Ubuntu qualification. OP-050/#77 then adversarially exercises materially different provider shapes through the generic boundary and records unavailable live paths as `NOT RUN`.
+
+OP-051/#78 is a focused reliability task for the observed Textual programme-policy timing flake. OP-052/#79 establishes conservative, dry-run-first branch lifecycle/pruning so merged/superseded refs can be removed without risking active or unique work. These two can proceed independently of provider qualification.
+
+OP-040/#48 restart, OP-041/#49 independent security and OP-042/#50 performance can proceed after their respective MVP prerequisites. OP-043/#51 remains the final v1 whole-system convergence audit and therefore explicitly waits for OP-050/#77, OP-051/#78 and OP-052/#79 as well as its earlier prerequisites.
 
 ### Stage E — deferred extensions
 
@@ -60,7 +64,8 @@ OP-048/#55 may implement RAMDisk/tmpfs acceleration only after measurements just
 - Shared schemas/state migrations/application composition require coordination even when implementation files differ.
 - TUI work may proceed against deterministic fixtures while live component adapters are externally gated.
 - Model registry/metrics and speculative execution can progress in parallel until model-selection integration.
-- Resource scheduling can use fake providers before Hyper-V/Ansible live qualification.
+- Resource scheduling can use fake providers before Hyper-V/Ansible live qualification, but synthetic provider success must remain visibly distinct from live qualification.
+- Branch cleanup must preserve default/protected refs, open-PR heads and any unique/unmerged history; names alone are never deletion evidence.
 - Deferred metaissue OP-M009 is not part of v1 readiness.
 
 ## Mandatory user-policy pass
@@ -79,4 +84,4 @@ See `issue-bindings.json` for exact records. OP-018 and OP-047 have no GitHub is
 
 ## Definition of programme completion
 
-Metaissues close only after child evidence is reconciled. V1 is not complete from green unit tests alone: OP-M008/#8 requires end-to-end, restart, security, resource/performance and compatibility review, with unavailable live integrations explicitly distinguished from synthetic coverage.
+Metaissues close only after child evidence is reconciled. V1 is not complete from green unit tests alone: OP-M008/#8 requires end-to-end, restart, security, resource/performance, provider-diversity and compatibility review, with unavailable live integrations explicitly distinguished from synthetic coverage. Known CI flakes and branch-lifecycle hazards must be classified and reconciled rather than normalized by reruns or ad-hoc cleanup.
