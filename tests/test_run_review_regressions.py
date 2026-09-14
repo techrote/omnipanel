@@ -7,12 +7,15 @@ from pathlib import Path
 import pytest
 
 from omnipanel.domain.contracts import (
+    AcceptanceGate,
     CandidateIdentityRecord,
     CandidateRecord,
     CandidateStatus,
     EconomicDimensions,
     ExpectedValue,
     ExpectedWallTime,
+    GateType,
+    GateVisibility,
     LoadBearing,
     MarginalCost,
     ReviewPolicy,
@@ -58,11 +61,12 @@ def _snapshot(
     *,
     candidates: tuple[CandidateRecord, ...] = (),
     policies: tuple[PolicyView, ...] = (),
+    task: TaskRecord | None = None,
 ) -> ApplicationSnapshot:
     return ApplicationSnapshot(
         projects=(),
         metaissues=(),
-        tasks=(_task(),),
+        tasks=((task or _task()),),
         dag_edges=(),
         runs=(run,),
         candidates=candidates,
@@ -115,6 +119,15 @@ def test_completed_selection_needs_matching_eligible_candidate_state() -> None:
     assert "selection=accepted:candidate-a" in eligible
 
 
+def test_terminal_noncompleted_selection_is_not_provisional() -> None:
+    run = _completed().model_copy(update={"status": RunStatus.CANCELLED})
+    text = render_run_detail(
+        _snapshot(run, candidates=(_candidate(CandidateStatus.ELIGIBLE),))
+    )
+    assert "selection=recorded:candidate-a NOT-ACCEPTED run-status=cancelled" in text
+    assert "selection=provisional" not in text
+
+
 def test_candidate_task_mismatch_fails_closed() -> None:
     text = render_run_detail(
         _snapshot(
@@ -153,6 +166,26 @@ def test_review_requirements_use_durable_policy_override() -> None:
     assert "implementation:2" in text
     assert "verification:3" in text
     assert "user-promotion:no" in text
+
+
+def test_optional_gate_is_rendered_as_optional_not_unknown() -> None:
+    optional_gate = AcceptanceGate(
+        gate_id="optional-review",
+        gate_type=GateType.REVIEW,
+        display_name="Optional review",
+        visibility=GateVisibility.MASTER_ONLY,
+        required=False,
+    )
+    task = _task().model_copy(update={"acceptance_gates": (optional_gate,)})
+    text = render_run_detail(
+        _snapshot(
+            _completed(),
+            candidates=(_candidate(CandidateStatus.ELIGIBLE),),
+            task=task,
+        )
+    )
+    assert "optional-review: type=review" in text
+    assert "required=no outcome=UNRECORDED" in text
 
 
 def test_observation_rejects_temporally_impossible_timestamps() -> None:
