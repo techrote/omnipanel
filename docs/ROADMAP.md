@@ -1,19 +1,19 @@
 # Omnipanel roadmap and dependency atlas
 
-Plan baseline: 2026-09-14. `workflow.json` owns stable IDs/dependencies; `issue-bindings.json` binds published GitHub numbers. Issue closure is not evidence completion.
+Plan baseline: 2026-09-15. `workflow.json` owns stable IDs/dependencies; `issue-bindings.json` binds published GitHub numbers. Issue closure is not evidence completion.
 
 ## Programme envelopes
 
 | Stable metaissue | GitHub | Outcome |
 |---|---:|---|
 | OP-M001 | #1 | foundation, schemas, durable state, app services, DAG/readiness, interface registry |
-| OP-M002 | #2 | mouse-driven Textual operator application |
+| OP-M002 | #2 | mouse-driven Textual operator application with provenance-correct resource/provider qualification views |
 | OP-M003 | #3 | component adapters, Execution Provider boundary and explicit provider qualification semantics |
 | OP-M004 | #4 | master drivers and proposal channels |
 | OP-M005 | #5 | Race, Diversity, acceptance/adjudication and cancellation/salvage |
 | OP-M006 | #6 | model registry, rolling assessment and safety eligibility |
 | OP-M007 | #7 | local resource scheduling and isolated worker pools |
-| OP-M008 | #8 | workflow audit, resilience, security, provider-diversity qualification, test reliability, branch hygiene, performance and v1 convergence |
+| OP-M008 | #8 | workflow audit, resilience, security, provider-diversity qualification, RAG/status freshness, CI-runtime maintenance, test reliability, branch hygiene, performance and v1 convergence |
 | OP-M009 | #9 | deferred web/remote/volatile-storage extensions |
 
 ## Delivery sequence
@@ -48,9 +48,11 @@ OP-036/#44 is design-only volatile scratch planning; no RAMDisk implementation i
 
 OP-049/#76 defines explicit cross-provider qualification/evidence semantics after the generic provider and Windows validation adapter exist. It does not replace OP-013/#22 live Ansible qualification or OP-034/#42 Hyper-V/Ubuntu qualification. OP-050/#77 then adversarially exercises materially different provider shapes through the generic boundary and records unavailable live paths as `NOT RUN`.
 
-OP-051/#78 is a focused reliability task for the observed Textual programme-policy timing flake. OP-052/#79 establishes conservative, dry-run-first branch lifecycle/pruning so merged/superseded refs can be removed without risking active or unique work. These two can proceed independently of provider qualification.
+OP-051/#78 is a focused reliability task for the observed Textual programme-policy timing flake. OP-052/#79 establishes conservative, dry-run-first branch lifecycle/pruning so merged/superseded refs can be removed without risking active or unique work.
 
-OP-040/#48 restart, OP-041/#49 independent security and OP-042/#50 performance can proceed after their respective MVP prerequisites. OP-043/#51 remains the final v1 whole-system convergence audit and therefore explicitly waits for OP-050/#77, OP-051/#78 and OP-052/#79 as well as its earlier prerequisites.
+OP-053/#81 removes obsolete live-status prose from universal RAG surfaces and establishes explicit freshness/status-source semantics. OP-054/#82 follows OP-010 and OP-049 so the resource dashboard cannot inherit qualification by provider ID alone and instead consumes exact provider identity/interface/evidence semantics. OP-055/#83 migrates Foundation CI away from the deprecated Node-20 action runtime while retaining immutable SHA pins and artifact evidence.
+
+OP-040/#48 restart, OP-041/#49 independent security and OP-042/#50 performance can proceed after their respective MVP prerequisites. OP-043/#51 remains the final v1 whole-system convergence audit and explicitly waits for OP-050/#77 through OP-055/#83 where those tasks are non-deferred prerequisites.
 
 ### Stage E — deferred extensions
 
@@ -65,6 +67,9 @@ OP-048/#55 may implement RAMDisk/tmpfs acceleration only after measurements just
 - TUI work may proceed against deterministic fixtures while live component adapters are externally gated.
 - Model registry/metrics and speculative execution can progress in parallel until model-selection integration.
 - Resource scheduling can use fake providers before Hyper-V/Ansible live qualification, but synthetic provider success must remain visibly distinct from live qualification.
+- Resource/provider UI qualification projections must bind to exact provider identity/version/interface evidence; provider ID alone is not sufficient qualification provenance.
+- Universal RAG/current-status prose must either derive from one explicit status source or carry unmistakable point-in-time semantics; duplicated hand-maintained task state is not authoritative.
+- Third-party CI actions remain immutable-SHA pinned and must use GitHub-supported action runtimes; evidence retention is part of the verification contract.
 - Branch cleanup must preserve default/protected refs, open-PR heads and any unique/unmerged history; names alone are never deletion evidence.
 - Deferred metaissue OP-M009 is not part of v1 readiness.
 
@@ -84,4 +89,4 @@ See `issue-bindings.json` for exact records. OP-018 and OP-047 have no GitHub is
 
 ## Definition of programme completion
 
-Metaissues close only after child evidence is reconciled. V1 is not complete from green unit tests alone: OP-M008/#8 requires end-to-end, restart, security, resource/performance, provider-diversity and compatibility review, with unavailable live integrations explicitly distinguished from synthetic coverage. Known CI flakes and branch-lifecycle hazards must be classified and reconciled rather than normalized by reruns or ad-hoc cleanup.
+Metaissues close only after child evidence is reconciled. V1 is not complete from green unit tests alone: OP-M008/#8 requires end-to-end, restart, security, resource/performance, provider-diversity and compatibility review, with unavailable live integrations explicitly distinguished from synthetic coverage. Provider qualification presentation must preserve exact provenance; universal RAG/current-status surfaces must not contradict merged evidence; CI action runtimes must be supported with retained evidence verified; known CI flakes and branch-lifecycle hazards must be classified and reconciled rather than normalized by reruns or ad-hoc cleanup.
