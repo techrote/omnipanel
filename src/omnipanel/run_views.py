@@ -122,8 +122,15 @@ def _selection_text(run: RunRecord, candidate: CandidateRecord | None) -> str:
     selected = run.selected_candidate_id
     if selected is None:
         return "selection=none"
-    if run.status is not RunStatus.COMPLETED:
+    if run.status in {
+        RunStatus.PLANNED,
+        RunStatus.QUEUED,
+        RunStatus.RUNNING,
+        RunStatus.AWAITING_ADJUDICATION,
+    }:
         return f"selection=provisional:{selected} NOT-ACCEPTED"
+    if run.status is not RunStatus.COMPLETED:
+        return f"selection=recorded:{selected} NOT-ACCEPTED run-status={run.status.value}"
     if candidate is None:
         return f"selection=recorded:{selected} ACCEPTANCE-INDETERMINATE candidate-state=missing"
     if candidate.candidate.task_id != run.task_id:
@@ -311,7 +318,7 @@ def render_run_detail(
         result = results.get(gate_id)
         gate_type = gate.gate_type.value if gate is not None else "unknown"
         visibility = gate.visibility.value if gate is not None else "unknown"
-        required = "yes" if gate is not None and gate.required else "unknown"
+        required = "unknown" if gate is None else ("yes" if gate.required else "no")
         outcome = result.outcome.value if result is not None else "UNRECORDED"
         lines.append(
             f"- {gate_id}: type={gate_type} visibility={visibility} "
