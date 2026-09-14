@@ -1,0 +1,79 @@
+{
+  "providers": [
+    {
+      "name": "development",
+      "provider_id": "provider-dev",
+      "provider_class": "general-worker",
+      "implementation_version": "fake-1.0",
+      "capabilities": ["build.python", "test.public"],
+      "purposes": ["execution", "validation"],
+      "guarantees": {
+        "isolation": true,
+        "resource_limits": true,
+        "network_policy": true,
+        "filesystem_policy": true
+      },
+      "metadata": {
+        "os.family": "linux",
+        "placement.kind": "local-virtualized"
+      },
+      "total": {
+        "cpu_millicores": 4000,
+        "memory_mib": 8192,
+        "storage_mib": 32768,
+        "wall_time_seconds": 900,
+        "gpu_count": 0
+      }
+    },
+    {
+      "name": "validation-only",
+      "provider_id": "provider-validation",
+      "provider_class": "validation-worker",
+      "implementation_version": "fake-1.0",
+      "capabilities": ["test.windows", "test.hidden"],
+      "purposes": ["validation"],
+      "guarantees": {
+        "isolation": true,
+        "resource_limits": true,
+        "network_policy": true,
+        "filesystem_policy": true
+      },
+      "metadata": {
+        "os.family": "windows",
+        "placement.kind": "virtualized"
+      },
+      "total": {
+        "cpu_millicores": 2000,
+        "memory_mib": 4096,
+        "storage_mib": 16384,
+        "wall_time_seconds": 600,
+        "gpu_count": 0
+      }
+    },
+    {
+      "name": "remote-shaped",
+      "provider_id": "provider-remote",
+      "provider_class": "general-worker",
+      "implementation_version": "fake-2.0",
+      "capabilities": ["build.python"],
+      "purposes": ["execution"],
+      "guarantees": {
+        "isolation": true,
+        "resource_limits": true,
+        "network_policy": true,
+        "filesystem_policy": true
+      },
+      "metadata": {
+        "os.family": "linux",
+        "placement.kind": "remote"
+      },
+      "total": {
+        "cpu_millicores": 8000,
+        "memory_mib": 16384,
+        "storage_mib": 65536,
+        "wall_time_seconds": 1800,
+        "gpu_count": 1
+      }
+    }
+  ]
+}
