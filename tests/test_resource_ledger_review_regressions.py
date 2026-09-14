@@ -134,4 +134,7 @@ def test_external_release_confirmation_timestamp_cannot_move_state_backward(
                 reason="stale timestamp must fail",
                 confirmed_at=CLOCK - timedelta(seconds=1),
             )
-        assert store.load_reservation(reservation.reservation_id).state is ReservationState.INDETERMINATE
+        assert (
+            store.load_reservation(reservation.reservation_id).state
+            is ReservationState.INDETERMINATE
+        )
