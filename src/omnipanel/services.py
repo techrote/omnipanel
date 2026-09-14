@@ -88,6 +88,7 @@ class ApplicationSnapshot(ContractModel):
     models: tuple[ModelAssessmentRecord, ...]
     policies: tuple[PolicyView, ...]
     resources: ResourceSummary
+    resource_reservations: tuple[ResourceReservation, ...] = ()
 
 
 class ServiceSync(ContractModel):
@@ -172,8 +173,14 @@ class ApplicationServices:
             reservation.reservation_id,
         )
 
+    def resource_reservations(self) -> tuple[ResourceReservation, ...]:
+        """Return the durable reservation records used by snapshots and resource views."""
+
+        return self._reservations()
+
     def snapshot(self) -> ApplicationSnapshot:
         tasks = self._records(TaskRecord, "task")
+        reservations = self._reservations()
         return ApplicationSnapshot(
             projects=self._records(ProjectRecord, "project"),
             metaissues=self._records(MetaissueRecord, "metaissue"),
@@ -185,7 +192,8 @@ class ApplicationServices:
             model_identities=self._records(ModelIdentityRecord, "model-identity"),
             models=self._records(ModelAssessmentRecord, "model-assessment"),
             policies=self._policies(tasks),
-            resources=self._resource_summary(),
+            resources=self._resource_summary(reservations),
+            resource_reservations=reservations,
         )
 
     def _records(self, model: type[TRecord], record_type: str) -> tuple[TRecord, ...]:
@@ -218,8 +226,10 @@ class ApplicationServices:
                 ) from exc
         return tuple(items)
 
-    def _resource_summary(self) -> ResourceSummary:
-        reservations = self._reservations()
+    def _resource_summary(
+        self,
+        reservations: tuple[ResourceReservation, ...],
+    ) -> ResourceSummary:
         live = tuple(item for item in reservations if item.state is not ReservationState.RELEASED)
         return ResourceSummary(
             total=len(reservations),
