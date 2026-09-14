@@ -77,14 +77,14 @@ class WindowsValidationQualification(ContractModel):
     provider: ProviderIdentity | None = None
 
     @model_validator(mode="after")
-    def _qualified_requires_provider(self) -> Self:
-        if self.state is WindowsValidationQualificationState.QUALIFIED:
-            if self.provider is None:
-                raise ValueError("qualified Windows validation requires provider identity")
+    def _provider_matches_qualification(self) -> Self:
+        if self.provider is not None:
             if self.provider.provider_class != WINDOWS_VALIDATION_PROVIDER_CLASS:
                 raise ValueError(
-                    "qualified Windows validation requires windows-validation provider"
+                    "Windows validation qualification requires windows-validation provider"
                 )
+        elif self.state is WindowsValidationQualificationState.QUALIFIED:
+            raise ValueError("qualified Windows validation requires provider identity")
         return self
 
 
@@ -117,6 +117,10 @@ class WindowsValidationResult(ContractModel):
 
     @model_validator(mode="after")
     def _outcome_evidence_consistency(self) -> Self:
+        if self.provider is not None:
+            if self.provider.provider_class != WINDOWS_VALIDATION_PROVIDER_CLASS:
+                raise ValueError("Windows validation result has non-Windows provider identity")
+
         if self.outcome is WindowsValidationOutcome.NOT_RUN:
             if self.provider_job_id is not None:
                 raise ValueError("NOT RUN cannot carry a provider job")
