@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 from enum import StrEnum
-from typing import Protocol, Self
+from typing import Never, Protocol, Self
 
 from pydantic import Field, field_validator, model_validator
 
@@ -648,7 +648,7 @@ class FakeExecutionProvider:
         reservation_id: str | None = None,
         candidate_id: str | None = None,
         missing_capability_handles: tuple[str, ...] = (),
-    ) -> None:
+    ) -> Never:
         raise ExecutionProviderError(
             ProviderDiagnostic(
                 code=code,
