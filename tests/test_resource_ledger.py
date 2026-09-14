@@ -324,9 +324,7 @@ def test_provider_version_change_makes_accounting_indeterminate(tmp_path: Path) 
         second = DurableResourceLedger(services, {"provider-a": replacement})
         view = second.provider_view("provider-a")
         assert view.accounting_state is ResourceAccountingState.INDETERMINATE
-        assert ResourceIssueCode.PROVIDER_IDENTITY_MISMATCH in {
-            item.code for item in view.issues
-        }
+        assert ResourceIssueCode.PROVIDER_IDENTITY_MISMATCH in {item.code for item in view.issues}
 
 
 def test_release_refuses_reused_provider_id_with_different_identity(tmp_path: Path) -> None:
