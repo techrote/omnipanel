@@ -377,7 +377,10 @@ def test_indeterminate_job_holds_resources_until_reconciled() -> None:
     reservation, handle = _start(provider)
     indeterminate = provider.finish(handle, ProviderCandidateLifecycle.INDETERMINATE)
     assert indeterminate.lifecycle is ProviderCandidateLifecycle.INDETERMINATE
-    assert provider.reservation(reservation.reservation_id).state is ProviderReservationState.INDETERMINATE
+    assert (
+        provider.reservation(reservation.reservation_id).state
+        is ProviderReservationState.INDETERMINATE
+    )
     held = provider.inventory().available
     assert held.cpu_millicores == 2500
     assert held.memory_mib == 6144
