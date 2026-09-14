@@ -449,8 +449,7 @@ class OperatorApp(App[None]):
                 for item in snapshot.model_identities
             ]
             assessments = [
-                f"{item.model.provider_id}/{item.model.model_id}  "
-                f"safety={item.safety_state.value}"
+                f"{item.model.provider_id}/{item.model.model_id}  safety={item.safety_state.value}"
                 for item in snapshot.models
             ]
             return (
