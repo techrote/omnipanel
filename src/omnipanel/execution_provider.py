@@ -636,7 +636,8 @@ class FakeExecutionProvider:
         active = tuple(
             reservation.request.resources
             for reservation in self._reservations.values()
-            if reservation.state in {
+            if reservation.state
+            in {
                 ProviderReservationState.RESERVED,
                 ProviderReservationState.ACTIVE,
                 ProviderReservationState.INDETERMINATE,
