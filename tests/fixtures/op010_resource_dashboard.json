@@ -1,0 +1,45 @@
+{
+  "qualifications": [
+    {
+      "provider_id": "provider-dev",
+      "state": "qualified",
+      "observed_at": "2026-09-14T07:45:00Z",
+      "reason": "synthetic general-worker contract qualified for OP-010 fixtures"
+    },
+    {
+      "provider_id": "provider-validation",
+      "state": "qualified",
+      "observed_at": "2026-09-14T07:45:00Z",
+      "reason": "synthetic validation-only contract qualified for fixture display"
+    },
+    {
+      "provider_id": "provider-down",
+      "state": "qualified",
+      "observed_at": "2026-09-14T07:45:00Z",
+      "reason": "contract qualified but provider availability is unavailable"
+    }
+  ],
+  "pools": [
+    {
+      "pool_id": "development-pool",
+      "provider_ids": ["provider-dev", "provider-down"],
+      "state": "degraded",
+      "observed_at": "2026-09-14T07:45:00Z",
+      "note": "one qualified development provider is unavailable"
+    },
+    {
+      "pool_id": "validation-pool",
+      "provider_ids": ["provider-validation"],
+      "state": "active",
+      "observed_at": "2026-09-14T07:45:00Z",
+      "note": "synthetic validation capacity only"
+    }
+  ],
+  "surplus": {
+    "state": "idle",
+    "observed_at": "2026-09-14T07:45:00Z",
+    "provider_id": "provider-dev",
+    "cpu_millicores": 0,
+    "reason": "foreground candidate reservation takes precedence"
+  }
+}
