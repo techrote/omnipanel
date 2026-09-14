@@ -7,6 +7,7 @@ provider/ledger disagreement rather than silently rewriting either side.
 
 from __future__ import annotations
 
+import uuid
 from collections.abc import Mapping
 from datetime import datetime
 from enum import StrEnum
@@ -37,6 +38,7 @@ from omnipanel.storage import (
 )
 
 _RESOURCE_BINDING_COMPONENT = "op032-resource-ledger"
+_RESOURCE_RECONCILIATION_COMPONENT = "op032-resource-reconciliation"
 
 
 class ResourceLedgerError(RuntimeError):
@@ -98,6 +100,7 @@ class ResourceReservationBinding(ContractModel):
     """Durable candidate/provenance metadata stored beside OP-003 reservations."""
 
     reservation_id: OpaqueId
+    provider_reservation_id: OpaqueId
     run_id: OpaqueId
     candidate_id: OpaqueId
     provider: ProviderIdentity
@@ -121,8 +124,23 @@ class ResourceReservationBinding(ContractModel):
         return self
 
 
+class ExternalReleaseConfirmation(ContractModel):
+    reservation_id: OpaqueId
+    confirmed_by: OpaqueId
+    reason: str = Field(min_length=1, max_length=1024)
+    confirmed_at: datetime
+
+    @field_validator("confirmed_at")
+    @classmethod
+    def _aware_confirmed_at(cls, value: datetime) -> datetime:
+        if value.tzinfo is None or value.utcoffset() is None:
+            raise ValueError("confirmed_at must include a timezone")
+        return value
+
+
 class ResourceReservationView(ContractModel):
     reservation_id: OpaqueId
+    provider_reservation_id: OpaqueId | None = None
     run_id: OpaqueId
     provider_id: OpaqueId
     candidate_id: OpaqueId | None = None
@@ -169,6 +187,7 @@ class ResourceLedgerSnapshot(ContractModel):
 
 class ReservationReconciliation(ContractModel):
     reservation_id: OpaqueId
+    provider_reservation_id: OpaqueId | None = None
     status: ReconciliationStatus
     durable_state: ReservationState
     provider_state: ProviderReservationState | None = None
@@ -191,8 +210,6 @@ class DurableResourceLedger:
                 raise ResourceLedgerError(
                     f"provider mapping key {key!r} does not match identity {identity.provider_id!r}"
                 )
-            if key in checked:
-                raise ResourceLedgerError(f"duplicate provider identity: {key}")
             checked[key] = provider
         self._providers = checked
 
@@ -214,8 +231,9 @@ class DurableResourceLedger:
         if provider_reservation.request != request:
             raise ResourceLedgerError("provider reservation returned a different provider request")
 
+        durable_id = f"resource-{uuid.uuid4().hex}"
         durable = ResourceReservation(
-            reservation_id=provider_reservation.reservation_id,
+            reservation_id=durable_id,
             run_id=run_id,
             provider_id=provider_id,
             request=request.resources,
@@ -225,6 +243,7 @@ class DurableResourceLedger:
         self.services.save_reservation(durable)
         binding = ResourceReservationBinding(
             reservation_id=durable.reservation_id,
+            provider_reservation_id=provider_reservation.reservation_id,
             run_id=run_id,
             candidate_id=candidate_id,
             provider=identity,
@@ -238,9 +257,12 @@ class DurableResourceLedger:
         provider = self._provider(provider_id)
         durable = self.services.store.load_reservation(reservation_id)
         self._require_provider_match(durable, provider_id)
-        provider_reservation = provider.release(reservation_id)
+        binding = self._require_binding_for_provider(durable, provider)
+        provider_reservation = provider.release(binding.provider_reservation_id)
         if provider_reservation.state is not ProviderReservationState.RELEASED:
             raise ResourceLedgerError("provider release did not settle reservation as released")
+        if provider_reservation.provider != binding.provider:
+            raise ResourceLedgerError("provider identity changed while releasing reservation")
         updated = durable.model_copy(
             update={
                 "state": ReservationState.RELEASED,
@@ -275,13 +297,14 @@ class DurableResourceLedger:
             held = self._hold_indeterminate(durable, provider.inventory().observed_at)
             return ReservationReconciliation(
                 reservation_id=reservation_id,
+                provider_reservation_id=binding.provider_reservation_id,
                 status=ReconciliationStatus.IDENTITY_MISMATCH,
                 durable_state=held.state,
                 detail="provider identity/version no longer matches durable reservation binding",
             )
 
         try:
-            observed = provider.reservation(reservation_id)
+            observed = provider.reservation(binding.provider_reservation_id)
         except ExecutionProviderError as exc:
             if exc.diagnostic.code is not ProviderFailureCode.RESERVATION_NOT_FOUND:
                 raise
@@ -298,6 +321,7 @@ class DurableResourceLedger:
             )
             return ReservationReconciliation(
                 reservation_id=reservation_id,
+                provider_reservation_id=binding.provider_reservation_id,
                 status=ReconciliationStatus.PROVIDER_MISSING,
                 durable_state=held.state,
                 detail="provider no longer reports reservation; explicit resolution required",
@@ -305,6 +329,7 @@ class DurableResourceLedger:
 
         if (
             observed.provider != identity
+            or observed.reservation_id != binding.provider_reservation_id
             or observed.run_id != durable.run_id
             or observed.request != binding.provider_request
             or observed.request.resources != durable.request
@@ -321,6 +346,7 @@ class DurableResourceLedger:
             )
             return ReservationReconciliation(
                 reservation_id=reservation_id,
+                provider_reservation_id=binding.provider_reservation_id,
                 status=ReconciliationStatus.PAYLOAD_MISMATCH,
                 durable_state=held.state,
                 provider_state=observed.state,
@@ -341,6 +367,7 @@ class DurableResourceLedger:
         )
         return ReservationReconciliation(
             reservation_id=reservation_id,
+            provider_reservation_id=binding.provider_reservation_id,
             status=ReconciliationStatus.RECONCILED,
             durable_state=updated.state,
             provider_state=observed.state,
@@ -365,23 +392,36 @@ class DurableResourceLedger:
                 "external release confirmation is allowed only for indeterminate reservations"
             )
         binding = self._load_binding_or_none(reservation_id)
-        if binding is None:
-            raise ResourceLedgerError("cannot externally release a reservation with missing binding")
         released = durable.model_copy(
             update={"state": ReservationState.RELEASED, "updated_at": confirmed_at}
         )
         self.services.save_reservation(released)
-        self._save_binding(
-            binding.model_copy(
-                update={
-                    "last_reconciled_at": confirmed_at,
-                    "last_reconciled_by": confirmed_by,
-                    "reconciliation_note": reason,
-                }
-            )
+        confirmation = ExternalReleaseConfirmation(
+            reservation_id=reservation_id,
+            confirmed_by=confirmed_by,
+            reason=reason,
+            confirmed_at=confirmed_at,
         )
+        self.services.store.save_component_observation(
+            _RESOURCE_RECONCILIATION_COMPONENT,
+            reservation_id,
+            confirmation.model_dump(mode="json"),
+        )
+        if binding is not None:
+            self._save_binding(
+                binding.model_copy(
+                    update={
+                        "last_reconciled_at": confirmed_at,
+                        "last_reconciled_by": confirmed_by,
+                        "reconciliation_note": reason,
+                    }
+                )
+            )
         return ReservationReconciliation(
             reservation_id=reservation_id,
+            provider_reservation_id=(
+                None if binding is None else binding.provider_reservation_id
+            ),
             status=ReconciliationStatus.EXTERNAL_RELEASE_CONFIRMED,
             durable_state=ReservationState.RELEASED,
             detail="indeterminate reservation explicitly confirmed released out of band",
@@ -526,6 +566,9 @@ class DurableResourceLedger:
         binding = self._load_binding_or_none(reservation.reservation_id)
         return ResourceReservationView(
             reservation_id=reservation.reservation_id,
+            provider_reservation_id=(
+                None if binding is None else binding.provider_reservation_id
+            ),
             run_id=reservation.run_id,
             provider_id=reservation.provider_id,
             candidate_id=None if binding is None else binding.candidate_id,
@@ -536,6 +579,20 @@ class DurableResourceLedger:
             updated_at=reservation.updated_at,
             binding_present=binding is not None,
         )
+
+    def _require_binding_for_provider(
+        self,
+        reservation: ResourceReservation,
+        provider: ExecutionProvider,
+    ) -> ResourceReservationBinding:
+        binding = self._load_binding_or_none(reservation.reservation_id)
+        if binding is None:
+            raise ResourceLedgerError("reservation candidate/provider binding is missing")
+        if binding.provider != provider.describe().identity:
+            raise ResourceLedgerError(
+                "reservation provider identity/version does not match current provider"
+            )
+        return binding
 
     def _require_provider_match(self, reservation: ResourceReservation, provider_id: str) -> None:
         if reservation.provider_id != provider_id:
@@ -617,6 +674,7 @@ def _accounting_state(delta: ResourceDelta) -> ResourceAccountingState:
 
 __all__ = [
     "DurableResourceLedger",
+    "ExternalReleaseConfirmation",
     "ProviderResourceView",
     "ReconciliationStatus",
     "ReservationReconciliation",
