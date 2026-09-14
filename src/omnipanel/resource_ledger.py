@@ -419,9 +419,7 @@ class DurableResourceLedger:
             )
         return ReservationReconciliation(
             reservation_id=reservation_id,
-            provider_reservation_id=(
-                None if binding is None else binding.provider_reservation_id
-            ),
+            provider_reservation_id=None if binding is None else binding.provider_reservation_id,
             status=ReconciliationStatus.EXTERNAL_RELEASE_CONFIRMED,
             durable_state=ReservationState.RELEASED,
             detail="indeterminate reservation explicitly confirmed released out of band",
@@ -533,7 +531,9 @@ class DurableResourceLedger:
         )
 
     def snapshot(self) -> ResourceLedgerSnapshot:
-        providers = tuple(self.provider_view(provider_id) for provider_id in sorted(self._providers))
+        providers = tuple(
+            self.provider_view(provider_id) for provider_id in sorted(self._providers)
+        )
         reservations = tuple(
             self._reservation_view(item) for item in self.services.resource_reservations()
         )
@@ -566,9 +566,7 @@ class DurableResourceLedger:
         binding = self._load_binding_or_none(reservation.reservation_id)
         return ResourceReservationView(
             reservation_id=reservation.reservation_id,
-            provider_reservation_id=(
-                None if binding is None else binding.provider_reservation_id
-            ),
+            provider_reservation_id=None if binding is None else binding.provider_reservation_id,
             run_id=reservation.run_id,
             provider_id=reservation.provider_id,
             candidate_id=None if binding is None else binding.candidate_id,
