@@ -61,7 +61,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
         return 2
     try:
-        from omnipanel.ui.app import OperatorApp
+        from omnipanel.ui.resources import ResourceOperatorApp
     except ModuleNotFoundError as exc:
         if exc.name != "textual":
             raise
@@ -76,7 +76,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     try:
         with StateStore(config) as store:
-            OperatorApp(config, ApplicationServices(store)).run()
+            ResourceOperatorApp(config, ApplicationServices(store)).run()
     except StateError as exc:
         print(f"omnipanel: durable state unavailable: {exc}", file=sys.stderr)
         return 4
