@@ -28,6 +28,7 @@ from omnipanel.execution_provider import (
     ProviderDescription,
     ProviderFailureCode,
     ProviderIdentity,
+    ProviderReservation,
     ProviderReservationState,
 )
 from omnipanel.services import ApplicationServices
@@ -258,15 +259,16 @@ class DurableResourceLedger:
         durable = self.services.store.load_reservation(reservation_id)
         self._require_provider_match(durable, provider_id)
         binding = self._require_binding_for_provider(durable, provider)
+        observed = provider.reservation(binding.provider_reservation_id)
+        self._require_same_provider_reservation(durable, binding, observed)
         provider_reservation = provider.release(binding.provider_reservation_id)
+        self._require_same_provider_reservation(durable, binding, provider_reservation)
         if provider_reservation.state is not ProviderReservationState.RELEASED:
             raise ResourceLedgerError("provider release did not settle reservation as released")
-        if provider_reservation.provider != binding.provider:
-            raise ResourceLedgerError("provider identity changed while releasing reservation")
         updated = durable.model_copy(
             update={
                 "state": ReservationState.RELEASED,
-                "updated_at": provider_reservation.updated_at,
+                "updated_at": max(durable.updated_at, provider_reservation.updated_at),
             }
         )
         self.services.save_reservation(updated)
@@ -308,12 +310,12 @@ class DurableResourceLedger:
         except ExecutionProviderError as exc:
             if exc.diagnostic.code is not ProviderFailureCode.RESERVATION_NOT_FOUND:
                 raise
-            now = provider.inventory().observed_at
+            now = max(durable.updated_at, provider.inventory().observed_at)
             held = self._hold_indeterminate(durable, now)
             self._save_binding(
                 binding.model_copy(
                     update={
-                        "last_reconciled_at": now,
+                        "last_reconciled_at": _binding_time(binding, now),
                         "last_reconciled_by": reconciled_by,
                         "reconciliation_note": "provider reports reservation missing",
                     }
@@ -327,20 +329,15 @@ class DurableResourceLedger:
                 detail="provider no longer reports reservation; explicit resolution required",
             )
 
-        if (
-            observed.provider != identity
-            or observed.reservation_id != binding.provider_reservation_id
-            or observed.run_id != durable.run_id
-            or observed.request != binding.provider_request
-            or observed.request.resources != durable.request
-        ):
+        if not _same_provider_reservation(durable, binding, observed):
             held = self._hold_indeterminate(durable, observed.updated_at)
+            reconcile_time = _binding_time(binding, held.updated_at)
             self._save_binding(
                 binding.model_copy(
                     update={
-                        "last_reconciled_at": observed.updated_at,
+                        "last_reconciled_at": reconcile_time,
                         "last_reconciled_by": reconciled_by,
-                        "reconciliation_note": "provider reservation payload mismatch",
+                        "reconciliation_note": "provider reservation payload/incarnation mismatch",
                     }
                 )
             )
@@ -350,16 +347,17 @@ class DurableResourceLedger:
                 status=ReconciliationStatus.PAYLOAD_MISMATCH,
                 durable_state=held.state,
                 provider_state=observed.state,
-                detail="provider reservation identity/run/request disagree with durable state",
+                detail="provider reservation identity/run/request/incarnation disagrees with durable state",
             )
 
         mapped = _durable_state(observed.state)
-        updated = durable.model_copy(update={"state": mapped, "updated_at": observed.updated_at})
+        updated_at = max(durable.updated_at, observed.updated_at)
+        updated = durable.model_copy(update={"state": mapped, "updated_at": updated_at})
         self.services.save_reservation(updated)
         self._save_binding(
             binding.model_copy(
                 update={
-                    "last_reconciled_at": observed.updated_at,
+                    "last_reconciled_at": _binding_time(binding, updated_at),
                     "last_reconciled_by": reconciled_by,
                     "reconciliation_note": "provider reservation reconciled",
                 }
@@ -391,6 +389,8 @@ class DurableResourceLedger:
             raise ResourceLedgerError(
                 "external release confirmation is allowed only for indeterminate reservations"
             )
+        if confirmed_at < durable.updated_at:
+            raise ValueError("confirmed_at must not precede the durable reservation timestamp")
         binding = self._load_binding_or_none(reservation_id)
         released = durable.model_copy(
             update={"state": ReservationState.RELEASED, "updated_at": confirmed_at}
@@ -411,7 +411,7 @@ class DurableResourceLedger:
             self._save_binding(
                 binding.model_copy(
                     update={
-                        "last_reconciled_at": confirmed_at,
+                        "last_reconciled_at": _binding_time(binding, confirmed_at),
                         "last_reconciled_by": confirmed_by,
                         "reconciliation_note": reason,
                     }
@@ -594,6 +594,17 @@ class DurableResourceLedger:
             )
         return binding
 
+    def _require_same_provider_reservation(
+        self,
+        durable: ResourceReservation,
+        binding: ResourceReservationBinding,
+        observed: ProviderReservation,
+    ) -> None:
+        if not _same_provider_reservation(durable, binding, observed):
+            raise ResourceLedgerError(
+                "provider reservation ID was reused or no longer matches durable provenance"
+            )
+
     def _require_provider_match(self, reservation: ResourceReservation, provider_id: str) -> None:
         if reservation.provider_id != provider_id:
             raise ResourceLedgerError(
@@ -606,10 +617,33 @@ class DurableResourceLedger:
         updated_at: datetime,
     ) -> ResourceReservation:
         held = reservation.model_copy(
-            update={"state": ReservationState.INDETERMINATE, "updated_at": updated_at}
+            update={
+                "state": ReservationState.INDETERMINATE,
+                "updated_at": max(reservation.updated_at, updated_at),
+            }
         )
         self.services.save_reservation(held)
         return held
+
+
+def _same_provider_reservation(
+    durable: ResourceReservation,
+    binding: ResourceReservationBinding,
+    observed: ProviderReservation,
+) -> bool:
+    return (
+        observed.provider == binding.provider
+        and observed.reservation_id == binding.provider_reservation_id
+        and observed.run_id == durable.run_id == binding.run_id
+        and observed.request == binding.provider_request
+        and observed.request.resources == durable.request
+        and observed.created_at == binding.created_at
+    )
+
+
+def _binding_time(binding: ResourceReservationBinding, candidate: datetime) -> datetime:
+    previous = binding.last_reconciled_at or binding.created_at
+    return max(previous, candidate)
 
 
 def _durable_state(state: ProviderReservationState) -> ReservationState:
