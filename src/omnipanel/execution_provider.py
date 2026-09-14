@@ -211,6 +211,7 @@ class ProviderEvidenceReceipt(ContractModel):
     provider: ProviderIdentity
     provider_job_id: OpaqueId
     run_id: OpaqueId
+    task_id: TaskId
     candidate_id: OpaqueId | None = None
     descriptor: EvidenceDescriptorRecord
 
@@ -285,6 +286,8 @@ def attach_provider_evidence(
     for receipt in receipts:
         if receipt.run_id != run.run_id:
             raise ValueError("provider evidence receipt refers to a different run")
+        if receipt.task_id != run.task_id:
+            raise ValueError("provider evidence receipt refers to a different task")
         if receipt.candidate_id is not None and receipt.candidate_id not in run.candidate_ids:
             raise ValueError("provider evidence receipt refers to a candidate outside the run")
         if receipt.descriptor.evidence_id not in evidence_ids:
@@ -602,6 +605,7 @@ class FakeExecutionProvider:
             provider=self._description.identity,
             provider_job_id=handle.provider_job_id,
             run_id=handle.run_id,
+            task_id=handle.task_id,
             candidate_id=handle.candidate_id,
             descriptor=descriptor,
         )
