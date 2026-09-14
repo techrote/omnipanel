@@ -6,7 +6,11 @@ from pathlib import Path
 
 import pytest
 
-from omnipanel.domain.contracts import ProviderRequest, ResourceRequest, TestSummary
+from omnipanel.domain.contracts import (
+    ProviderRequest,
+    ResourceRequest,
+    TestSummary as ValidationTestSummary,
+)
 from omnipanel.execution_provider import (
     ExecutionProvider,
     ExecutionProviderError,
@@ -127,7 +131,7 @@ def test_execution_work_is_rejected_before_backend_start() -> None:
 def test_pass_result_records_test_platform_and_provider_identity() -> None:
     provider = _provider()
     reservation, handle = _start(provider)
-    summary = TestSummary(total=4, passed=4)
+    summary = ValidationTestSummary(total=4, passed=4)
     result = provider.finish_validation(
         handle,
         WindowsValidationOutcome.PASS,
@@ -153,7 +157,7 @@ def test_pass_result_records_test_platform_and_provider_identity() -> None:
 def test_validation_fail_is_not_provider_execution_failure_or_pass() -> None:
     provider = _provider()
     _, handle = _start(provider)
-    summary = TestSummary(total=5, passed=4, failed=1)
+    summary = ValidationTestSummary(total=5, passed=4, failed=1)
     result = provider.finish_validation(
         handle,
         WindowsValidationOutcome.FAIL,
@@ -172,7 +176,7 @@ def test_candidate_payload_cannot_replace_platform_harness_identity() -> None:
     result = provider.finish_validation(
         handle,
         WindowsValidationOutcome.PASS,
-        test_summary=TestSummary(total=1, passed=1),
+        test_summary=ValidationTestSummary(total=1, passed=1),
     )
     receipt = provider.collect_evidence(handle)[-1]
     assert result.platform.harness_id == "validation-harness-v1"
@@ -243,7 +247,7 @@ def test_reconciliation_preserves_per_observation_evidence() -> None:
     assert "/indeterminate/" in first_receipt.descriptor.location
     assert first.evidence_ids == (first_receipt.descriptor.evidence_id,)
 
-    summary = TestSummary(total=3, passed=3)
+    summary = ValidationTestSummary(total=3, passed=3)
     second = provider.finish_validation(
         handle,
         WindowsValidationOutcome.PASS,
