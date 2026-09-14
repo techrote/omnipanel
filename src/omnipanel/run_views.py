@@ -14,6 +14,7 @@ from enum import StrEnum
 
 from omnipanel.domain.contracts import (
     CandidateRecord,
+    CandidateStatus,
     EvidenceDescriptorRecord,
     RunRecord,
     RunStatus,
@@ -48,7 +49,13 @@ class RunObservation:
             value = getattr(self, field_name)
             if value is not None and (value.tzinfo is None or value.utcoffset() is None):
                 raise ValueError(f"{field_name} must include a timezone")
-        if self.candidate_id is None and (self.model_provider_id is not None or self.model_id is not None):
+        if self.started_at is not None and self.started_at > self.observed_at:
+            raise ValueError("started_at must not be later than observed_at")
+        if self.last_event_at is not None and self.last_event_at > self.observed_at:
+            raise ValueError("last_event_at must not be later than observed_at")
+        if self.candidate_id is None and (
+            self.model_provider_id is not None or self.model_id is not None
+        ):
             raise ValueError("candidate model identity requires candidate_id")
         if (self.model_provider_id is None) != (self.model_id is None):
             raise ValueError("model_provider_id and model_id must be supplied together")
@@ -101,25 +108,46 @@ def _format_seconds(seconds: float) -> str:
 def _run_liveness(run: RunRecord, observation: RunObservation | None) -> str:
     if observation is not None:
         return f"[{observation.state.value.upper()}]"
-    if run.status in {RunStatus.COMPLETED, RunStatus.FAILED, RunStatus.CANCELLED, RunStatus.CONTAINED}:
+    if run.status in {
+        RunStatus.COMPLETED,
+        RunStatus.FAILED,
+        RunStatus.CANCELLED,
+        RunStatus.CONTAINED,
+    }:
         return "[HISTORICAL]"
     return "[INDETERMINATE]"
 
 
-def _selection_text(run: RunRecord) -> str:
+def _selection_text(run: RunRecord, candidate: CandidateRecord | None) -> str:
     selected = run.selected_candidate_id
     if selected is None:
         return "selection=none"
-    if run.status is RunStatus.COMPLETED:
+    if run.status is not RunStatus.COMPLETED:
+        return f"selection=provisional:{selected} NOT-ACCEPTED"
+    if candidate is None:
+        return f"selection=recorded:{selected} ACCEPTANCE-INDETERMINATE candidate-state=missing"
+    if candidate.candidate.task_id != run.task_id:
+        return (
+            f"selection=recorded:{selected} ACCEPTANCE-INDETERMINATE "
+            f"candidate-task={candidate.candidate.task_id}"
+        )
+    if candidate.status is CandidateStatus.ELIGIBLE:
         return f"selection=accepted:{selected}"
-    return f"selection=provisional:{selected} NOT-ACCEPTED"
+    return (
+        f"selection=recorded:{selected} ACCEPTANCE-INDETERMINATE "
+        f"candidate-status={candidate.status.value}"
+    )
 
 
 def _review_text(snapshot: ApplicationSnapshot, run: RunRecord) -> str:
     task = next((item for item in snapshot.tasks if item.task_id == run.task_id), None)
     if task is None:
         return "review=requirements-unavailable (task record missing)"
-    review = task.policy.review
+    policy = next(
+        (view.policy for view in snapshot.policies if view.task_id == run.task_id),
+        task.policy,
+    )
+    review = policy.review
     return (
         "review="
         f"self-check:{'yes' if review.self_check_required else 'no'} "
@@ -130,6 +158,7 @@ def _review_text(snapshot: ApplicationSnapshot, run: RunRecord) -> str:
 
 
 def _candidate_line(
+    task_id: str,
     candidate_id: str,
     candidate: CandidateRecord | None,
     observation: RunObservation | None,
@@ -140,6 +169,9 @@ def _candidate_line(
     if candidate is None:
         status = "indeterminate:no-durable-candidate-record"
         worker = "unknown"
+    elif candidate.candidate.task_id != task_id:
+        status = f"indeterminate:task-mismatch:{candidate.candidate.task_id}"
+        worker = candidate.candidate.worker_id
     else:
         status = candidate.status.value
         worker = candidate.candidate.worker_id
@@ -196,11 +228,14 @@ def render_run_detail(
     candidates = {item.candidate.candidate_id: item for item in snapshot.candidates}
     evidence = {item.evidence_id: item for item in snapshot.evidence}
     run_observation = _latest_observation(observations, run.run_id, None)
+    selected_candidate = (
+        candidates.get(run.selected_candidate_id) if run.selected_candidate_id is not None else None
+    )
 
     lines = [
         f"run={run.run_id}  task={run.task_id}  strategy={run.strategy.value}  "
         f"phase={run.status.value}  {_run_liveness(run, run_observation)}",
-        _selection_text(run),
+        _selection_text(run, selected_candidate),
         _review_text(snapshot, run),
     ]
     if run.race_policy is not None:
@@ -214,7 +249,9 @@ def render_run_detail(
         )
     else:
         elapsed = (
-            _format_seconds((run_observation.observed_at - run_observation.started_at).total_seconds())
+            _format_seconds(
+                (run_observation.observed_at - run_observation.started_at).total_seconds()
+            )
             if run_observation.started_at is not None
             else "unknown"
         )
@@ -226,7 +263,8 @@ def render_run_detail(
         provider = run_observation.provider_id or "unknown"
         lines.extend(
             (
-                f"elapsed={elapsed}; last-event={last_event}; observed={run_observation.observed_at.isoformat()}",
+                f"elapsed={elapsed}; last-event={last_event}; "
+                f"observed={run_observation.observed_at.isoformat()}",
                 f"provider={provider}",
             )
         )
@@ -238,6 +276,7 @@ def render_run_detail(
         observation = _latest_observation(observations, run.run_id, item_id)
         lines.append(
             _candidate_line(
+                run.task_id,
                 item_id,
                 candidates.get(item_id),
                 observation,
@@ -248,15 +287,21 @@ def render_run_detail(
     if chosen_candidate_id is None:
         return "\n".join(lines)
 
-    selected_candidate = candidates.get(chosen_candidate_id)
+    chosen_candidate = candidates.get(chosen_candidate_id)
     lines.append(f"\nCandidate detail: {chosen_candidate_id}")
-    if selected_candidate is None:
+    if chosen_candidate is None:
         lines.append("state=INDETERMINATE; durable candidate state is missing")
+        return "\n".join(lines)
+    if chosen_candidate.candidate.task_id != run.task_id:
+        lines.append(
+            "state=INDETERMINATE; candidate task mismatch: "
+            f"run={run.task_id} candidate={chosen_candidate.candidate.task_id}"
+        )
         return "\n".join(lines)
 
     task = next((item for item in snapshot.tasks if item.task_id == run.task_id), None)
     gates = {item.gate_id: item for item in task.acceptance_gates} if task is not None else {}
-    results = {item.gate_id: item for item in selected_candidate.gate_results}
+    results = {item.gate_id: item for item in chosen_candidate.gate_results}
     gate_ids = tuple(dict.fromkeys((*gates.keys(), *results.keys())))
     lines.append("Gates")
     if not gate_ids:
@@ -266,19 +311,21 @@ def render_run_detail(
         result = results.get(gate_id)
         gate_type = gate.gate_type.value if gate is not None else "unknown"
         visibility = gate.visibility.value if gate is not None else "unknown"
+        required = "yes" if gate is not None and gate.required else "unknown"
         outcome = result.outcome.value if result is not None else "UNRECORDED"
         lines.append(
-            f"- {gate_id}: type={gate_type} visibility={visibility} outcome={outcome}"
+            f"- {gate_id}: type={gate_type} visibility={visibility} "
+            f"required={required} outcome={outcome}"
         )
 
     lines.append("Evidence")
-    evidence_ids = _ordered_evidence_ids(run, selected_candidate)
+    evidence_ids = _ordered_evidence_ids(run, chosen_candidate)
     if not evidence_ids:
         lines.append("- none recorded")
     else:
         lines.extend(_evidence_text(evidence.get(item_id), item_id) for item_id in evidence_ids)
-    if selected_candidate.cancellation is not None:
-        cancellation = selected_candidate.cancellation
+    if chosen_candidate.cancellation is not None:
+        cancellation = chosen_candidate.cancellation
         lines.append(
             "Cancellation: "
             f"kind={cancellation.kind.value} salvage={cancellation.salvage_level.value}"
