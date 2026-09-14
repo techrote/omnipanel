@@ -259,13 +259,14 @@ def test_missing_provider_reservation_stays_indeterminate_until_explicit_release
         )
         assert result.status is ReconciliationStatus.PROVIDER_MISSING
         assert result.durable_state is ReservationState.INDETERMINATE
-        assert reopened.load_reservation(reservation_id).state is ReservationState.INDETERMINATE
+        durable = reopened.load_reservation(reservation_id)
+        assert durable.state is ReservationState.INDETERMINATE
 
         released = ledger.confirm_external_release(
             reservation_id=reservation_id,
             confirmed_by="human:operator",
             reason="provider host inspected out of band; job absent",
-            confirmed_at=CLOCK,
+            confirmed_at=durable.updated_at,
         )
         assert released.status is ReconciliationStatus.EXTERNAL_RELEASE_CONFIRMED
         assert reopened.load_reservation(reservation_id).state is ReservationState.RELEASED
