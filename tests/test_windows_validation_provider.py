@@ -228,3 +228,33 @@ def test_indeterminate_validation_holds_reservation_until_reconciled() -> None:
     with pytest.raises(ExecutionProviderError) as exc:
         provider.release(reservation.reservation_id)
     assert exc.value.diagnostic.code is ProviderFailureCode.RESERVATION_STATE_INVALID
+
+
+def test_reconciliation_preserves_per_observation_evidence() -> None:
+    provider = _provider()
+    reservation, handle = _start(provider)
+    first = provider.finish_validation(
+        handle,
+        WindowsValidationOutcome.INDETERMINATE,
+        detail="temporary provider uncertainty",
+    )
+    first_receipt = provider.collect_evidence(handle)[0]
+    assert first_receipt.descriptor.test_summary is None
+    assert "/indeterminate/" in first_receipt.descriptor.location
+    assert first.evidence_ids == (first_receipt.descriptor.evidence_id,)
+
+    summary = TestSummary(total=3, passed=3)
+    second = provider.finish_validation(
+        handle,
+        WindowsValidationOutcome.PASS,
+        test_summary=summary,
+        detail="provider reconciled and validation passed",
+    )
+    receipts = provider.collect_evidence(handle)
+    assert len(receipts) == 2
+    assert receipts[0].descriptor.test_summary is None
+    assert "/indeterminate/" in receipts[0].descriptor.location
+    assert receipts[1].descriptor.test_summary == summary
+    assert "/pass/" in receipts[1].descriptor.location
+    assert second.evidence_ids == tuple(item.descriptor.evidence_id for item in receipts)
+    assert provider.release(reservation.reservation_id).state.value == "released"
