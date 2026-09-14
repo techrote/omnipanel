@@ -82,7 +82,9 @@ class WindowsValidationQualification(ContractModel):
             if self.provider is None:
                 raise ValueError("qualified Windows validation requires provider identity")
             if self.provider.provider_class != WINDOWS_VALIDATION_PROVIDER_CLASS:
-                raise ValueError("qualified Windows validation requires windows-validation provider")
+                raise ValueError(
+                    "qualified Windows validation requires windows-validation provider"
+                )
         return self
 
 
@@ -148,7 +150,9 @@ class WindowsValidationProvider:
         description = backend.describe()
         metadata = {item.key: item.value for item in description.metadata}
         if description.identity.provider_class != WINDOWS_VALIDATION_PROVIDER_CLASS:
-            raise ValueError("Windows validation provider must use provider_class='windows-validation'")
+            raise ValueError(
+                "Windows validation provider must use provider_class='windows-validation'"
+            )
         if set(description.supported_purposes) != {ProviderWorkPurpose.VALIDATION}:
             raise ValueError("Windows validation provider must advertise validation-only purpose")
         if WINDOWS_VALIDATION_CAPABILITY not in description.capabilities:
@@ -268,7 +272,9 @@ class SyntheticWindowsValidationProvider(WindowsValidationProvider):
         detail: str | None = None,
     ) -> WindowsValidationResult:
         if outcome is WindowsValidationOutcome.NOT_RUN:
-            raise ValueError("NOT RUN is created from qualification state, not a started provider job")
+            raise ValueError(
+                "NOT RUN is created from qualification state, not a started provider job"
+            )
         if outcome in {WindowsValidationOutcome.PASS, WindowsValidationOutcome.FAIL}:
             if test_summary is None:
                 raise ValueError("PASS/FAIL validation requires test_summary")
