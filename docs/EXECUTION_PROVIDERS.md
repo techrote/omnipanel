@@ -10,6 +10,107 @@ Omnipanel schedules against an abstract Execution Provider rather than hardcodin
 
 The provider contract describes capabilities, resource limits, isolation properties, lifecycle, evidence handles and qualified interface version. Distribution/transport details remain provider-specific.
 
+`src/omnipanel/execution_provider.py` is the executable OP-014 provider-neutral contract. It intentionally sits above concrete adapter/transport details and beside OP-006 interface negotiation. A provider still requires separately qualified component/adapter compatibility before a live integration can be trusted; implementing this Python protocol does not itself qualify Ansible or any other executor.
+
+## OP-014 executable contract
+
+### Identity and description
+
+`ProviderIdentity` carries four authoritative fields:
+
+- stable `provider_id`;
+- stable `provider_class` used only when a task requests one explicitly;
+- `implementation_version`;
+- the exact `ComponentContractRef` implemented at the provider boundary.
+
+Human-readable environment properties do not become scheduler architecture. `ProviderDescription.metadata` is a bounded key/value list suitable for facts such as operating-system family, placement kind or transport kind. The generic module contains no Ubuntu, Hyper-V or Windows scheduler branch.
+
+Capabilities are stable handles. Work purpose is separate from capability: a provider may support `execution`, `validation`, or both. This permits a validation-only provider without defining a second scheduling API.
+
+### Guarantees are provider-owned
+
+`ProviderGuarantees` records whether the provider can enforce:
+
+- isolation;
+- resource limits;
+- network policy;
+- filesystem/writable-path policy.
+
+Omnipanel does not emulate a missing guarantee. A `ProviderRequest` is validated against the provider description before reservation. Missing requested capabilities, provider-class mismatch, unavailable enforcement or unavailable capacity raise a typed `ExecutionProviderError` with an operator-readable `ProviderDiagnostic`.
+
+The default OP-002 `ProviderRequest` is deliberately restrictive: isolation is required, network is not granted and writable paths are empty unless requested. A provider therefore needs policy enforcement below Omnipanel to honour those restrictions rather than merely accepting the request object.
+
+### Availability and inventory
+
+`ProviderInventory` carries the exact provider identity/version, explicit availability (`available`, `degraded`, `unavailable`, `indeterminate`), total resources, currently available resources and a timezone-aware observation timestamp.
+
+CPU, memory, storage and GPU quantities are fungible capacity in the deterministic fake. `wall_time_seconds` is a per-job maximum ceiling, not a pool that is consumed by concurrent reservations. A request must fit that ceiling, but reserving 300 seconds does not subtract 300 seconds from another worker's allowable run duration.
+
+`unavailable` and `indeterminate` providers reject new reservations. `degraded` remains visibly degraded but can accept work that its reported capabilities, guarantees and remaining capacity can satisfy.
+
+### Reservation and candidate lifecycle
+
+The neutral lifecycle is:
+
+1. `reserve(run_id, ProviderRequest)`;
+2. `start(ProviderCandidateRequest)` using that reservation;
+3. `observe(ProviderCandidateHandle)` zero or more times;
+4. provider reaches `succeeded`, `failed`, `cancelled` or `indeterminate`;
+5. collect provider evidence;
+6. release the reservation.
+
+Reservation IDs, provider job IDs, run IDs, task IDs and candidate IDs remain distinct fields. A handle contains a full provider identity snapshot so stale/misrouted handles from another provider version fail closed.
+
+An active reservation cannot be released while its candidate is still non-terminal. Cancellation is an explicit provider lifecycle transition and produces provider evidence.
+
+### Execution success is not acceptance
+
+`ProviderCandidateLifecycle.SUCCEEDED` means only that the execution provider reports its job completed successfully. It does **not** mean:
+
+- `CandidateStatus.ELIGIBLE`;
+- acceptance gates passed;
+- reviewer requirements were satisfied;
+- a Race candidate won;
+- a run may be promoted or merged.
+
+Those decisions remain Omnipanel/master/adjudication responsibilities above the provider boundary. The generic provider module has no function that turns provider success into candidate eligibility.
+
+### Evidence and provenance
+
+Terminal fake-provider observations produce `ProviderEvidenceReceipt` values. Each receipt contains:
+
+- full provider identity, implementation version and interface contract;
+- provider job, run and optional candidate identity;
+- an `EvidenceDescriptorRecord` whose producer type is `provider` and whose producer ID exactly matches the provider identity.
+
+The descriptor location also includes stable provider ID, provider implementation version, job ID and lifecycle. `attach_provider_evidence()` may add those evidence IDs to a durable `RunRecord`, but it changes no run status or selection field.
+
+A real integration may persist the descriptor/artifact through the existing evidence/storage boundary. Live provider handles remain outside OP-003 durable state as designed.
+
+### Typed failure surface
+
+The current generic failure codes cover:
+
+- provider unavailable/indeterminate;
+- provider-class mismatch;
+- unsupported capability or work purpose;
+- missing isolation/network/filesystem/resource enforcement;
+- insufficient resources;
+- missing/invalid reservation;
+- missing/invalid candidate state;
+- request/handle mismatch;
+- provider identity/version mismatch.
+
+These are provider-neutral diagnostics. Concrete adapters may translate lower-level failures into this surface without leaking transport- or platform-specific control flow into tasks.
+
+## Deterministic fake provider
+
+`FakeExecutionProvider` is an in-memory test provider using a supplied timezone-aware clock origin, deterministic counters and deterministic evidence locations. Given the same provider description and operation sequence it returns identical reservations, handles, observations and evidence receipts.
+
+The fake implements real resource accounting and the same capability/guarantee checks as the generic boundary. Its `finish()` method is deliberately a test-control surface rather than part of the `ExecutionProvider` protocol; it lets tests advance a provider job to a terminal execution lifecycle without inventing adjudication authority.
+
+`tests/fixtures/op014_provider_matrix.json` describes development, validation-only and remote-shaped providers through the same contract. Platform and placement differences appear only as metadata/capabilities. `tests/test_execution_provider.py` and `tests/test_execution_provider_matrix.py` exercise lifecycle, resources, typed failures, provenance and architecture neutrality.
+
 ## Responsibility split
 
 ### Ansible
