@@ -94,13 +94,20 @@ def _request(
     storage: int = 4096,
     wall: int = 300,
     gpu: int = 0,
-) -> ResourceRequest:
-    return ResourceRequest(
-        cpu_millicores=cpu,
-        memory_mib=memory,
-        storage_mib=storage,
-        wall_time_seconds=wall,
-        gpu_count=gpu,
+) -> ProviderRequest:
+    return ProviderRequest(
+        provider_class="general-worker",
+        required_capability_handles=(),
+        resources=ResourceRequest(
+            cpu_millicores=cpu,
+            memory_mib=memory,
+            storage_mib=storage,
+            wall_time_seconds=wall,
+            gpu_count=gpu,
+        ),
+        writable_paths=(),
+        network_access=False,
+        isolation_required=True,
     )
 
 
@@ -111,16 +118,18 @@ def test_candidate_reservation_round_trip_and_release_use_one_durable_source(
     with StateStore(_config(tmp_path)) as store:
         services = ApplicationServices(store)
         ledger = DurableResourceLedger(services, {"provider-a": provider})
+        request = _request(cpu=1500)
         view = ledger.reserve_candidate(
             provider_id="provider-a",
             run_id="run-a",
             candidate_id="candidate-a",
-            request=_request(cpu=1500),
+            request=request,
         )
         assert view.candidate_id == "candidate-a"
         assert view.binding_present
         assert view.state is ReservationState.RESERVED
         assert view.provider == provider.describe().identity
+        assert view.provider_request == request
 
         snapshot = services.snapshot()
         assert snapshot.resource_reservations == services.resource_reservations()
@@ -259,14 +268,7 @@ def test_missing_provider_reservation_stays_indeterminate_until_explicit_release
 
 def test_provider_reporting_less_free_capacity_is_surfaced_not_hidden(tmp_path: Path) -> None:
     provider = _provider()
-    provider.reserve(
-        run_id="external-run",
-        request=ProviderRequest(
-            provider_class="general-worker",
-            resources=_request(cpu=750, memory=512, storage=1024),
-            isolation_required=True,
-        ),
-    )
+    provider.reserve(run_id="external-run", request=_request(cpu=750, memory=512, storage=1024))
     with StateStore(_config(tmp_path)) as store:
         ledger = DurableResourceLedger(
             ApplicationServices(store),
