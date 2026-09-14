@@ -14,7 +14,12 @@ from typing import Self
 
 from pydantic import Field, field_validator, model_validator
 
-from omnipanel.domain.contracts import ContractModel, OpaqueId, ResourceRequest
+from omnipanel.domain.contracts import (
+    ContractModel,
+    OpaqueId,
+    ProviderRequest,
+    ResourceRequest,
+)
 from omnipanel.execution_provider import (
     ExecutionProvider,
     ExecutionProviderError,
@@ -96,6 +101,7 @@ class ResourceReservationBinding(ContractModel):
     run_id: OpaqueId
     candidate_id: OpaqueId
     provider: ProviderIdentity
+    provider_request: ProviderRequest
     created_at: datetime
     last_reconciled_at: datetime | None = None
     last_reconciled_by: OpaqueId | None = None
@@ -121,6 +127,7 @@ class ResourceReservationView(ContractModel):
     provider_id: OpaqueId
     candidate_id: OpaqueId | None = None
     provider: ProviderIdentity | None = None
+    provider_request: ProviderRequest | None = None
     request: ResourceRequest
     state: ReservationState
     updated_at: datetime
@@ -195,26 +202,23 @@ class DurableResourceLedger:
         provider_id: str,
         run_id: str,
         candidate_id: str,
-        request: ResourceRequest,
+        request: ProviderRequest,
     ) -> ResourceReservationView:
         provider = self._provider(provider_id)
-        provider_reservation = provider.reserve(
-            run_id=run_id,
-            request=_provider_request_for_resources(provider, request),
-        )
+        provider_reservation = provider.reserve(run_id=run_id, request=request)
         identity = provider.describe().identity
         if provider_reservation.provider != identity:
             raise ResourceLedgerError("provider reservation identity changed during reservation")
         if provider_reservation.run_id != run_id:
             raise ResourceLedgerError("provider reservation returned a different run_id")
-        if provider_reservation.request.resources != request:
-            raise ResourceLedgerError("provider reservation returned different resource quantities")
+        if provider_reservation.request != request:
+            raise ResourceLedgerError("provider reservation returned a different provider request")
 
         durable = ResourceReservation(
             reservation_id=provider_reservation.reservation_id,
             run_id=run_id,
             provider_id=provider_id,
-            request=request,
+            request=request.resources,
             state=_durable_state(provider_reservation.state),
             updated_at=provider_reservation.updated_at,
         )
@@ -224,6 +228,7 @@ class DurableResourceLedger:
             run_id=run_id,
             candidate_id=candidate_id,
             provider=identity,
+            provider_request=request,
             created_at=provider_reservation.created_at,
         )
         self._save_binding(binding)
@@ -301,6 +306,7 @@ class DurableResourceLedger:
         if (
             observed.provider != identity
             or observed.run_id != durable.run_id
+            or observed.request != binding.provider_request
             or observed.request.resources != durable.request
         ):
             held = self._hold_indeterminate(durable, observed.updated_at)
@@ -318,7 +324,7 @@ class DurableResourceLedger:
                 status=ReconciliationStatus.PAYLOAD_MISMATCH,
                 durable_state=held.state,
                 provider_state=observed.state,
-                detail="provider reservation identity/run/resources disagree with durable state",
+                detail="provider reservation identity/run/request disagree with durable state",
             )
 
         mapped = _durable_state(observed.state)
@@ -524,6 +530,7 @@ class DurableResourceLedger:
             provider_id=reservation.provider_id,
             candidate_id=None if binding is None else binding.candidate_id,
             provider=None if binding is None else binding.provider,
+            provider_request=None if binding is None else binding.provider_request,
             request=reservation.request,
             state=reservation.state,
             updated_at=reservation.updated_at,
@@ -546,21 +553,6 @@ class DurableResourceLedger:
         )
         self.services.save_reservation(held)
         return held
-
-
-def _provider_request_for_resources(
-    provider: ExecutionProvider,
-    resources: ResourceRequest,
-):
-    from omnipanel.domain.contracts import ProviderRequest
-
-    return ProviderRequest(
-        provider_class=provider.describe().identity.provider_class,
-        resources=resources,
-        writable_paths=(),
-        network_access=False,
-        isolation_required=True,
-    )
 
 
 def _durable_state(state: ProviderReservationState) -> ReservationState:
