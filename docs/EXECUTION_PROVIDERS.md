@@ -55,13 +55,15 @@ The neutral lifecycle is:
 1. `reserve(run_id, ProviderRequest)`;
 2. `start(ProviderCandidateRequest)` using that reservation;
 3. `observe(ProviderCandidateHandle)` zero or more times;
-4. provider reaches `succeeded`, `failed`, `cancelled` or `indeterminate`;
-5. collect provider evidence;
-6. release the reservation.
+4. provider reports `succeeded`, `failed`, `cancelled` or `indeterminate`;
+5. collect provider evidence as observations accumulate;
+6. release the reservation only after the candidate is settled as `succeeded`, `failed` or `cancelled`.
 
-Reservation IDs, provider job IDs, run IDs, task IDs and candidate IDs remain distinct fields. A handle contains a full provider identity snapshot so stale/misrouted handles from another provider version fail closed.
+Reservation IDs, provider job IDs, run IDs, task IDs and candidate IDs remain distinct fields. A handle contains a full provider identity snapshot so stale/misrouted handles from another provider version fail closed. `reservation()` exposes the provider's current resource-state observation for reconciliation.
 
-An active reservation cannot be released while its candidate is still non-terminal. Cancellation is an explicit provider lifecycle transition and produces provider evidence.
+`indeterminate` is deliberately **not terminal**. It means the control layer cannot prove whether underlying work is still consuming resources. The reservation therefore becomes `INDETERMINATE`, remains charged against provider inventory and cannot be released. A later provider observation may reconcile that work to a known settled state; only then is release permitted. Evidence collected before and after reconciliation is retained rather than overwritten.
+
+An active or indeterminate reservation cannot be released while its candidate is unsettled. Cancellation is an explicit provider lifecycle transition and produces provider evidence.
 
 ### Execution success is not acceptance
 
@@ -77,7 +79,7 @@ Those decisions remain Omnipanel/master/adjudication responsibilities above the 
 
 ### Evidence and provenance
 
-Terminal fake-provider observations produce `ProviderEvidenceReceipt` values. Each receipt contains:
+Provider lifecycle transitions that the deterministic fake records produce `ProviderEvidenceReceipt` values. Each receipt contains:
 
 - full provider identity, implementation version and interface contract;
 - provider job, run and optional candidate identity;
@@ -107,7 +109,7 @@ These are provider-neutral diagnostics. Concrete adapters may translate lower-le
 
 `FakeExecutionProvider` is an in-memory test provider using a supplied timezone-aware clock origin, deterministic counters and deterministic evidence locations. Given the same provider description and operation sequence it returns identical reservations, handles, observations and evidence receipts.
 
-The fake implements real resource accounting and the same capability/guarantee checks as the generic boundary. Its `finish()` method is deliberately a test-control surface rather than part of the `ExecutionProvider` protocol; it lets tests advance a provider job to a terminal execution lifecycle without inventing adjudication authority.
+The fake implements real resource accounting and the same capability/guarantee checks as the generic boundary. Its `finish()` method is deliberately a test-control surface rather than part of the `ExecutionProvider` protocol; it lets tests advance a provider job to a settled or indeterminate execution lifecycle without inventing adjudication authority. Indeterminate work remains charged until later reconciliation.
 
 `tests/fixtures/op014_provider_matrix.json` describes development, validation-only and remote-shaped providers through the same contract. Platform and placement differences appear only as metadata/capabilities. `tests/test_execution_provider.py` and `tests/test_execution_provider_matrix.py` exercise lifecycle, resources, typed failures, provenance and architecture neutrality.
 
