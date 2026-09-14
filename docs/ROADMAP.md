@@ -50,7 +50,7 @@ OP-049/#76 defines explicit cross-provider qualification/evidence semantics afte
 
 OP-051/#78 is a focused reliability task for the observed Textual programme-policy timing flake. OP-052/#79 establishes conservative, dry-run-first branch lifecycle/pruning so merged/superseded refs can be removed without risking active or unique work. These two can proceed independently of provider qualification.
 
-OP-040/#48 restart, OP-041/#49 independent security and OP-042/#50 performance can proceed after their respective MVP prerequisites. OP-043/#51 is the final v1 whole-system convergence audit; OP-M008/#8 itself does not close until its complete child evidence, including OP-050–OP-052, is reconciled.
+OP-040/#48 restart, OP-041/#49 independent security and OP-042/#50 performance can proceed after their respective MVP prerequisites. OP-043/#51 remains the final v1 whole-system convergence audit and therefore explicitly waits for OP-050/#77, OP-051/#78 and OP-052/#79 as well as its earlier prerequisites.
 
 ### Stage E — deferred extensions
 
