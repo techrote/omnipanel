@@ -85,9 +85,7 @@ def _latest_observation(
     candidate_id: str | None,
 ) -> RunObservation | None:
     matches = tuple(
-        item
-        for item in observations
-        if item.run_id == run_id and item.candidate_id == candidate_id
+        item for item in observations if item.run_id == run_id and item.candidate_id == candidate_id
     )
     if not matches:
         return None
