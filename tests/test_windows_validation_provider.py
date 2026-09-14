@@ -17,9 +17,9 @@ from omnipanel.execution_provider import (
     ProviderWorkPurpose,
 )
 from omnipanel.windows_validation_provider import (
-    SyntheticWindowsValidationProvider,
     WINDOWS_VALIDATION_CAPABILITY,
     WINDOWS_VALIDATION_PROVIDER_CLASS,
+    SyntheticWindowsValidationProvider,
     WindowsValidationOutcome,
     WindowsValidationPlatform,
     WindowsValidationQualification,
