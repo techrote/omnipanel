@@ -1,17 +1,17 @@
 {
   "schema_version": 1,
   "programme": "omnipanel-v1",
-  "generated_on": "2026-09-12",
+  "generated_on": "2026-09-14",
   "notes": "GitHub issue numbers are populated after publication; stable IDs are authoritative.",
   "metaissues": [
     {"id":"OP-M001","title":"Foundation, contracts and durable programme substrate","children":["OP-001","OP-002","OP-003","OP-004","OP-005","OP-006"]},
     {"id":"OP-M002","title":"Mouse-driven operator application and TUI","children":["OP-007","OP-008","OP-009","OP-010","OP-011"]},
-    {"id":"OP-M003","title":"Component adapters and execution-provider boundary","children":["OP-012","OP-013","OP-014","OP-015","OP-016"]},
+    {"id":"OP-M003","title":"Component adapters and execution-provider boundary","children":["OP-012","OP-013","OP-014","OP-015","OP-016","OP-049"]},
     {"id":"OP-M004","title":"Master drivers and proposal channels","children":["OP-017","OP-018","OP-019","OP-020"]},
     {"id":"OP-M005","title":"Speculative execution and test-driven adjudication","children":["OP-021","OP-022","OP-023","OP-024","OP-025","OP-026"]},
     {"id":"OP-M006","title":"Model registry, rolling assessment and safety eligibility","children":["OP-027","OP-028","OP-029","OP-030","OP-031"]},
     {"id":"OP-M007","title":"Local resource scheduling and isolated worker pools","children":["OP-032","OP-033","OP-034","OP-035","OP-036"]},
-    {"id":"OP-M008","title":"Verification, resilience and v1 convergence","children":["OP-037","OP-038","OP-039","OP-040","OP-041","OP-042","OP-043"]},
+    {"id":"OP-M008","title":"Verification, resilience and v1 convergence","children":["OP-037","OP-038","OP-039","OP-040","OP-041","OP-042","OP-043","OP-050","OP-051","OP-052"]},
     {"id":"OP-M009","title":"Deferred web, remote-worker and volatile-storage extensions","children":["OP-044","OP-045","OP-046","OP-047","OP-048"],"deferred":true}
   ],
   "tasks": [
@@ -62,6 +62,10 @@
     {"id":"OP-045","title":"Prototype web operator UI against shared services","deps":["OP-044"],"load_bearing":"labware","deferred":true},
     {"id":"OP-046","title":"Design remote Execution Provider protocol shape","deps":["OP-014","OP-043"],"load_bearing":"labware","deferred":true},
     {"id":"OP-047","title":"Implement first qualified remote Execution Provider","deps":["OP-046"],"load_bearing":"stone","deferred":true},
-    {"id":"OP-048","title":"Implement measured RAMDisk/tmpfs acceleration","deps":["OP-036","OP-043"],"load_bearing":"labware","deferred":true}
+    {"id":"OP-048","title":"Implement measured RAMDisk/tmpfs acceleration","deps":["OP-036","OP-043"],"load_bearing":"labware","deferred":true},
+    {"id":"OP-049","title":"Define cross-provider qualification matrix and evidence contract","deps":["OP-014","OP-015"],"load_bearing":"stone"},
+    {"id":"OP-050","title":"Adversarially qualify Execution Provider diversity and implementation neutrality","deps":["OP-014","OP-032","OP-049"],"load_bearing":"stone"},
+    {"id":"OP-051","title":"Eliminate Textual programme-policy test timing flake","deps":["OP-007","OP-008"],"load_bearing":"tissue"},
+    {"id":"OP-052","title":"Establish safe merged-branch lifecycle and graveyard pruning","deps":["OP-037"],"load_bearing":"tissue"}
   ]
 }
