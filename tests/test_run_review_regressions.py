@@ -107,23 +107,17 @@ def test_completed_selection_needs_matching_eligible_candidate_state() -> None:
     assert "ACCEPTANCE-INDETERMINATE candidate-state=missing" in missing
     assert "selection=accepted" not in missing
 
-    failed = render_run_detail(
-        _snapshot(run, candidates=(_candidate(CandidateStatus.FAILED),))
-    )
+    failed = render_run_detail(_snapshot(run, candidates=(_candidate(CandidateStatus.FAILED),)))
     assert "ACCEPTANCE-INDETERMINATE candidate-status=failed" in failed
     assert "selection=accepted" not in failed
 
-    eligible = render_run_detail(
-        _snapshot(run, candidates=(_candidate(CandidateStatus.ELIGIBLE),))
-    )
+    eligible = render_run_detail(_snapshot(run, candidates=(_candidate(CandidateStatus.ELIGIBLE),)))
     assert "selection=accepted:candidate-a" in eligible
 
 
 def test_terminal_noncompleted_selection_is_not_provisional() -> None:
     run = _completed().model_copy(update={"status": RunStatus.CANCELLED})
-    text = render_run_detail(
-        _snapshot(run, candidates=(_candidate(CandidateStatus.ELIGIBLE),))
-    )
+    text = render_run_detail(_snapshot(run, candidates=(_candidate(CandidateStatus.ELIGIBLE),)))
     assert "selection=recorded:candidate-a NOT-ACCEPTED run-status=cancelled" in text
     assert "selection=provisional" not in text
 
