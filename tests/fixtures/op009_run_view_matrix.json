@@ -1,0 +1,44 @@
+{
+  "scenarios": [
+    {
+      "name": "active-live",
+      "run_status": "running",
+      "candidate_status": "running",
+      "freshness": "live",
+      "expected_run_marker": "[LIVE]",
+      "expected_candidate_text": "status=running"
+    },
+    {
+      "name": "active-stale",
+      "run_status": "running",
+      "candidate_status": "running",
+      "freshness": "stale",
+      "expected_run_marker": "[STALE]",
+      "expected_candidate_text": "status=running"
+    },
+    {
+      "name": "active-indeterminate",
+      "run_status": "running",
+      "candidate_status": "running",
+      "freshness": "indeterminate",
+      "expected_run_marker": "[INDETERMINATE]",
+      "expected_candidate_text": "status=running"
+    },
+    {
+      "name": "failed-historical",
+      "run_status": "failed",
+      "candidate_status": "failed",
+      "freshness": null,
+      "expected_run_marker": "[HISTORICAL]",
+      "expected_candidate_text": "status=failed"
+    },
+    {
+      "name": "cancelled-historical",
+      "run_status": "cancelled",
+      "candidate_status": "cancelled",
+      "freshness": null,
+      "expected_run_marker": "[HISTORICAL]",
+      "expected_candidate_text": "status=cancelled"
+    }
+  ]
+}
