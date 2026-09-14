@@ -14,6 +14,7 @@ from typing import Literal, Self
 from pydantic import Field, field_validator, model_validator
 
 from omnipanel.domain.contracts import (
+    ComponentContractRef,
     ContractModel,
     DisplayText,
     EvidenceKind,
@@ -77,8 +78,11 @@ class WindowsValidationQualification(ContractModel):
 
     @model_validator(mode="after")
     def _qualified_requires_provider(self) -> Self:
-        if self.state is WindowsValidationQualificationState.QUALIFIED and self.provider is None:
-            raise ValueError("qualified Windows validation requires provider identity")
+        if self.state is WindowsValidationQualificationState.QUALIFIED:
+            if self.provider is None:
+                raise ValueError("qualified Windows validation requires provider identity")
+            if self.provider.provider_class != WINDOWS_VALIDATION_PROVIDER_CLASS:
+                raise ValueError("qualified Windows validation requires windows-validation provider")
         return self
 
 
@@ -118,14 +122,14 @@ class WindowsValidationResult(ContractModel):
                 raise ValueError("NOT RUN cannot carry executed-test evidence")
             return self
 
+        if self.provider is None or self.provider_job_id is None:
+            raise ValueError("started validation requires provider and job identity")
+        if not self.evidence_ids:
+            raise ValueError("started validation requires evidence")
+
         if self.outcome in {WindowsValidationOutcome.PASS, WindowsValidationOutcome.FAIL}:
-            if self.provider is None or self.provider_job_id is None:
-                raise ValueError("executed validation requires provider and job identity")
             if self.test_summary is None:
                 raise ValueError("executed validation requires a test summary")
-            if not self.evidence_ids:
-                raise ValueError("executed validation requires evidence")
-
         if self.outcome is WindowsValidationOutcome.PASS and self.test_summary is not None:
             if self.test_summary.failed or self.test_summary.errors:
                 raise ValueError("PASS cannot contain failed/error test counts")
@@ -251,7 +255,8 @@ class SyntheticWindowsValidationProvider(WindowsValidationProvider):
             availability=availability,
             clock_start=clock_start,
         )
-        self._test_summaries: dict[str, TestSummary | None] = {}
+        self._evidence_summaries: dict[str, TestSummary | None] = {}
+        self._evidence_outcomes: dict[str, WindowsValidationOutcome] = {}
         super().__init__(self._fake, platform=platform)
 
     def finish_validation(
@@ -276,7 +281,10 @@ class SyntheticWindowsValidationProvider(WindowsValidationProvider):
             lifecycle,
             detail=detail or f"Windows validation {outcome.value}",
         )
-        self._test_summaries[handle.provider_job_id] = test_summary
+        generic_receipts = self._fake.collect_evidence(handle)
+        newest_evidence_id = generic_receipts[-1].descriptor.evidence_id
+        self._evidence_summaries[newest_evidence_id] = test_summary
+        self._evidence_outcomes[newest_evidence_id] = outcome
         receipts = self.collect_evidence(handle)
         return WindowsValidationResult(
             run_id=handle.run_id,
@@ -297,24 +305,28 @@ class SyntheticWindowsValidationProvider(WindowsValidationProvider):
         handle: ProviderCandidateHandle,
     ) -> tuple[ProviderEvidenceReceipt, ...]:
         receipts = self._fake.collect_evidence(handle)
-        summary = self._test_summaries.get(handle.provider_job_id)
-        return tuple(self._platform_receipt(receipt, summary) for receipt in receipts)
+        return tuple(self._platform_receipt(receipt) for receipt in receipts)
 
     def _platform_receipt(
         self,
         receipt: ProviderEvidenceReceipt,
-        summary: TestSummary | None,
     ) -> ProviderEvidenceReceipt:
         descriptor = receipt.descriptor
+        evidence_id = descriptor.evidence_id
+        summary = self._evidence_summaries.get(evidence_id)
+        outcome = self._evidence_outcomes.get(evidence_id)
+        provider_lifecycle = descriptor.location.rsplit("/", 1)[-1]
+        validation_state = outcome.value if outcome is not None else provider_lifecycle
         location = (
             f"validation://{receipt.provider.provider_id}/"
             f"{receipt.provider.implementation_version}/"
             f"{self.platform.platform_id}/{self.platform.image_id}/"
-            f"{self.platform.harness_id}/{receipt.provider_job_id}"
+            f"{self.platform.harness_id}/{receipt.provider_job_id}/"
+            f"{validation_state}/{evidence_id}"
         )
         enriched = descriptor.model_copy(
             update={
-                "kind": EvidenceKind.TEST_REPORT if summary is not None else descriptor.kind,
+                "kind": EvidenceKind.TEST_REPORT if outcome is not None else descriptor.kind,
                 "location": location,
                 "test_summary": summary,
             }
@@ -354,9 +366,7 @@ def _validation_capabilities(capabilities: tuple[str, ...]) -> tuple[str, ...]:
     return tuple(dict.fromkeys(ordered))
 
 
-def _windows_validation_contract():
-    from omnipanel.domain.contracts import ComponentContractRef
-
+def _windows_validation_contract() -> ComponentContractRef:
     return ComponentContractRef(
         component_id="windows-validation-provider",
         contract_id="execution-provider",
