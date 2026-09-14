@@ -57,7 +57,7 @@ def _task() -> TaskRecord:
     task = TaskRecord.model_validate(raw)
     return task.model_copy(
         update={
-            "task_id": "OP-010-FIXTURE",
+            "task_id": "OP-010",
             "display_name": "Fixture placement task",
             "provider_request": ProviderRequest(
                 provider_class="general-worker",
